@@ -1,0 +1,645 @@
+{
+  "schema_version": 2,
+  "model": "Qwen3-VL",
+  "tau_default": 0.5,
+  "bootstrap": {
+    "n_resamples": 2000,
+    "seed": 0,
+    "generator": "numpy.random.default_rng"
+  },
+  "default_build": "case_study",
+  "build_order": [
+    "case_study",
+    "sft_variants"
+  ],
+  "builds": {
+    "case_study": {
+      "id": "case_study",
+      "label": "Case study \u00b7 Qwen3-VL Staged GRPO (541 records)",
+      "short_label": "Case study (541)",
+      "role": "The traced case study: one adapted checkpoint audited end to end, from run-level state to task-dataset risk to image-region evidence.",
+      "model": "Qwen3-VL",
+      "conditions": [
+        "Staged GRPO"
+      ],
+      "n_records": 541,
+      "images_released": 541,
+      "absent_record_fields": [],
+      "source": "plan/inspector_data.json",
+      "reference_summary": {
+        "Staged GRPO": {
+          "n": 541,
+          "vqa_acc": 0.503,
+          "obj_recall": 0.389,
+          "silent_failure_rate": 0.274,
+          "trustworthy_rate": 0.229,
+          "lucky_rate": 0.198,
+          "honest_rate": 0.299,
+          "P_reliable_given_correct": 0.456,
+          "P_unreliable_given_correct": 0.544,
+          "trust_gap": 0.058,
+          "gap_lo": -0.029,
+          "gap_hi": 0.147,
+          "point_biserial": 0.061,
+          "pim_prec_given_correct": 0.471
+        }
+      },
+      "option_stats": {
+        "k_distribution": {
+          "1": 26,
+          "2": 69,
+          "3": 19,
+          "4": 113,
+          "5": 103,
+          "6": 61,
+          "9": 150
+        },
+        "uniform_choice_baseline": 0.263,
+        "n_single_option": 26
+      },
+      "demo_cases": {
+        "silent_failure": {
+          "note": "Correct answer, unreliable action. An answer-only overseer would clear this hand-off.",
+          "cases": [
+            {
+              "question_id": "crop_5ca713fb225e:presence",
+              "crop_id": "crop_5ca713fb225e",
+              "task": "presence",
+              "dataset": "Lucchi",
+              "obj_recall": 0.0,
+              "n_gt": 4,
+              "n_pred": 3,
+              "label": "presence \u00b7 Lucchi \u00b7 recall 0.00"
+            },
+            {
+              "question_id": "crop_3c60d6c3d80e:count",
+              "crop_id": "crop_3c60d6c3d80e",
+              "task": "counting",
+              "dataset": "EM-H",
+              "obj_recall": 0.0,
+              "n_gt": 2,
+              "n_pred": 2,
+              "label": "counting \u00b7 EM-H \u00b7 recall 0.00"
+            },
+            {
+              "question_id": "crop_eae207124a0e:marked_region_3",
+              "crop_id": "crop_eae207124a0e",
+              "task": "location",
+              "dataset": "EM-H",
+              "obj_recall": 0.0,
+              "n_gt": 3,
+              "n_pred": 7,
+              "label": "location \u00b7 EM-H \u00b7 recall 0.00"
+            },
+            {
+              "question_id": "crop_2adf091dea46:nearest_pair_relation",
+              "crop_id": "crop_2adf091dea46",
+              "task": "relation",
+              "dataset": "VNC",
+              "obj_recall": 0.333,
+              "n_gt": 2,
+              "n_pred": 2,
+              "label": "relation \u00b7 VNC \u00b7 recall 0.33"
+            },
+            {
+              "question_id": "crop_43f7d6ff894b:shape_first",
+              "crop_id": "crop_43f7d6ff894b",
+              "task": "attribute",
+              "dataset": "EM-H",
+              "obj_recall": 0.0,
+              "n_gt": 2,
+              "n_pred": 7,
+              "label": "attribute \u00b7 EM-H \u00b7 recall 0.00"
+            }
+          ]
+        },
+        "trustworthy": {
+          "note": "Answer and action agree and the action clears the gate: a hand-off that can proceed.",
+          "cases": [
+            {
+              "question_id": "crop_02ef505e8070:presence",
+              "crop_id": "crop_02ef505e8070",
+              "task": "presence",
+              "dataset": "Lucchi",
+              "obj_recall": 1.0,
+              "n_gt": 1,
+              "n_pred": 2,
+              "label": "presence \u00b7 Lucchi \u00b7 recall 1.00"
+            },
+            {
+              "question_id": "crop_2f3818a30cbe:count",
+              "crop_id": "crop_2f3818a30cbe",
+              "task": "counting",
+              "dataset": "VNC",
+              "obj_recall": 1.0,
+              "n_gt": 2,
+              "n_pred": 2,
+              "label": "counting \u00b7 VNC \u00b7 recall 1.00"
+            },
+            {
+              "question_id": "crop_4195251d4346:location_edge_3",
+              "crop_id": "crop_4195251d4346",
+              "task": "location",
+              "dataset": "Lucchi",
+              "obj_recall": 1.0,
+              "n_gt": 3,
+              "n_pred": 3,
+              "label": "location \u00b7 Lucchi \u00b7 recall 1.00"
+            },
+            {
+              "question_id": "crop_1b86f8a62725:shape_first",
+              "crop_id": "crop_1b86f8a62725",
+              "task": "attribute",
+              "dataset": "EM-H",
+              "obj_recall": 1.0,
+              "n_gt": 1,
+              "n_pred": 2,
+              "label": "attribute \u00b7 EM-H \u00b7 recall 1.00"
+            },
+            {
+              "question_id": "crop_2084805990b3:presence",
+              "crop_id": "crop_2084805990b3",
+              "task": "presence",
+              "dataset": "Lucchi",
+              "obj_recall": 1.0,
+              "n_gt": 1,
+              "n_pred": 2,
+              "label": "presence \u00b7 Lucchi \u00b7 recall 1.00"
+            }
+          ]
+        },
+        "lucky": {
+          "note": "Wrong answer, reliable action. The answer channel would have blocked a usable action.",
+          "cases": [
+            {
+              "question_id": "crop_44438f740bcb:count",
+              "crop_id": "crop_44438f740bcb",
+              "task": "counting",
+              "dataset": "Lucchi",
+              "obj_recall": 1.0,
+              "n_gt": 1,
+              "n_pred": 2,
+              "label": "counting \u00b7 Lucchi \u00b7 recall 1.00"
+            },
+            {
+              "question_id": "crop_e97450624e41:smallest_object_location",
+              "crop_id": "crop_e97450624e41",
+              "task": "location",
+              "dataset": "Lucchi",
+              "obj_recall": 1.0,
+              "n_gt": 3,
+              "n_pred": 3,
+              "label": "location \u00b7 Lucchi \u00b7 recall 1.00"
+            },
+            {
+              "question_id": "crop_5680674105db:nearest_pair_relation",
+              "crop_id": "crop_5680674105db",
+              "task": "relation",
+              "dataset": "Lucchi",
+              "obj_recall": 1.0,
+              "n_gt": 2,
+              "n_pred": 2,
+              "label": "relation \u00b7 Lucchi \u00b7 recall 1.00"
+            },
+            {
+              "question_id": "crop_022bb9e627ce:shape_first",
+              "crop_id": "crop_022bb9e627ce",
+              "task": "attribute",
+              "dataset": "VNC",
+              "obj_recall": 1.0,
+              "n_gt": 1,
+              "n_pred": 2,
+              "label": "attribute \u00b7 VNC \u00b7 recall 1.00"
+            },
+            {
+              "question_id": "crop_469b6da1da5e:count",
+              "crop_id": "crop_469b6da1da5e",
+              "task": "counting",
+              "dataset": "VNC",
+              "obj_recall": 1.0,
+              "n_gt": 1,
+              "n_pred": 2,
+              "label": "counting \u00b7 VNC \u00b7 recall 1.00"
+            }
+          ]
+        },
+        "honest": {
+          "note": "Both channels fail, so answer-only monitoring already surfaces this region.",
+          "cases": [
+            {
+              "question_id": "crop_917f51e7423f:count",
+              "crop_id": "crop_917f51e7423f",
+              "task": "counting",
+              "dataset": "EM-H",
+              "obj_recall": 0.0,
+              "n_gt": 3,
+              "n_pred": 2,
+              "label": "counting \u00b7 EM-H \u00b7 recall 0.00"
+            },
+            {
+              "question_id": "crop_d6f5b4c6872d:largest_object_location",
+              "crop_id": "crop_d6f5b4c6872d",
+              "task": "location",
+              "dataset": "EM-H",
+              "obj_recall": 0.0,
+              "n_gt": 5,
+              "n_pred": 7,
+              "label": "location \u00b7 EM-H \u00b7 recall 0.00"
+            },
+            {
+              "question_id": "crop_2f53e0c5a736:nearest_pair_relation",
+              "crop_id": "crop_2f53e0c5a736",
+              "task": "relation",
+              "dataset": "Lucchi",
+              "obj_recall": 0.0,
+              "n_gt": 4,
+              "n_pred": 2,
+              "label": "relation \u00b7 Lucchi \u00b7 recall 0.00"
+            },
+            {
+              "question_id": "crop_d2577187de0b:shape_first",
+              "crop_id": "crop_d2577187de0b",
+              "task": "attribute",
+              "dataset": "Lucchi",
+              "obj_recall": 0.0,
+              "n_gt": 3,
+              "n_pred": 2,
+              "label": "attribute \u00b7 Lucchi \u00b7 recall 0.00"
+            },
+            {
+              "question_id": "crop_ccd05519d62c:count",
+              "crop_id": "crop_ccd05519d62c",
+              "task": "counting",
+              "dataset": "Lucchi",
+              "obj_recall": 0.0,
+              "n_gt": 3,
+              "n_pred": 2,
+              "label": "counting \u00b7 Lucchi \u00b7 recall 0.00"
+            }
+          ]
+        }
+      }
+    },
+    "sft_variants": {
+      "id": "sft_variants",
+      "label": "SFT-variant audit \u00b7 Qwen3-VL (753 records \u00d7 5 conditions)",
+      "short_label": "SFT-variant audit (753)",
+      "role": "The re-audit set: the same reliability measures recomputed after each supervised adaptation, on one matched record set.",
+      "model": "Qwen3-VL",
+      "conditions": [
+        "Zero-shot",
+        "Perception SFT",
+        "Grounding SFT",
+        "Staged SFT",
+        "Joint SFT"
+      ],
+      "n_records": 753,
+      "images_released": 753,
+      "absent_record_fields": [],
+      "source": "outputs/percrop.csv + outputs/paired_set.jsonl + outputs/preds_qwen3vl_*.jsonl",
+      "reference_summary": {
+        "Zero-shot": {
+          "n": 753,
+          "vqa_acc": 0.437,
+          "obj_recall": 0.214,
+          "silent_failure_rate": 0.336,
+          "trustworthy_rate": 0.101,
+          "lucky_rate": 0.116,
+          "honest_rate": 0.448,
+          "P_reliable_given_correct": 0.231,
+          "P_unreliable_given_correct": 0.769,
+          "trust_gap": 0.026,
+          "gap_lo": -0.032,
+          "gap_hi": 0.086,
+          "point_biserial": 0.023,
+          "pim_prec_given_correct": 0.355
+        },
+        "Perception SFT": {
+          "n": 753,
+          "vqa_acc": 0.506,
+          "obj_recall": 0.256,
+          "silent_failure_rate": 0.381,
+          "trustworthy_rate": 0.125,
+          "lucky_rate": 0.134,
+          "honest_rate": 0.36,
+          "P_reliable_given_correct": 0.247,
+          "P_unreliable_given_correct": 0.753,
+          "trust_gap": -0.025,
+          "gap_lo": -0.087,
+          "gap_hi": 0.041,
+          "point_biserial": -0.009,
+          "pim_prec_given_correct": 0.369
+        },
+        "Grounding SFT": {
+          "n": 753,
+          "vqa_acc": 0.432,
+          "obj_recall": 0.231,
+          "silent_failure_rate": 0.316,
+          "trustworthy_rate": 0.116,
+          "lucky_rate": 0.131,
+          "honest_rate": 0.437,
+          "P_reliable_given_correct": 0.268,
+          "P_unreliable_given_correct": 0.732,
+          "trust_gap": 0.036,
+          "gap_lo": -0.026,
+          "gap_hi": 0.103,
+          "point_biserial": 0.033,
+          "pim_prec_given_correct": 0.328
+        },
+        "Staged SFT": {
+          "n": 753,
+          "vqa_acc": 0.506,
+          "obj_recall": 0.371,
+          "silent_failure_rate": 0.297,
+          "trustworthy_rate": 0.208,
+          "lucky_rate": 0.186,
+          "honest_rate": 0.308,
+          "P_reliable_given_correct": 0.412,
+          "P_unreliable_given_correct": 0.588,
+          "trust_gap": 0.036,
+          "gap_lo": -0.034,
+          "gap_hi": 0.108,
+          "point_biserial": 0.043,
+          "pim_prec_given_correct": 0.457
+        },
+        "Joint SFT": {
+          "n": 753,
+          "vqa_acc": 0.529,
+          "obj_recall": 0.325,
+          "silent_failure_rate": 0.335,
+          "trustworthy_rate": 0.194,
+          "lucky_rate": 0.161,
+          "honest_rate": 0.311,
+          "P_reliable_given_correct": 0.367,
+          "P_unreliable_given_correct": 0.633,
+          "trust_gap": 0.026,
+          "gap_lo": -0.043,
+          "gap_hi": 0.094,
+          "point_biserial": 0.028,
+          "pim_prec_given_correct": 0.412
+        }
+      },
+      "option_stats": {
+        "k_distribution": {
+          "1": 32,
+          "2": 105,
+          "3": 30,
+          "4": 156,
+          "5": 144,
+          "6": 80,
+          "9": 206
+        },
+        "uniform_choice_baseline": 0.264,
+        "n_single_option": 32
+      },
+      "demo_cases": {
+        "silent_failure": {
+          "note": "Correct answer, unreliable action. An answer-only overseer would clear this hand-off.",
+          "cases": [
+            {
+              "question_id": "crop_129cc050e550:presence",
+              "crop_id": "crop_129cc050e550",
+              "task": "presence",
+              "dataset": "Lucchi",
+              "obj_recall": 0.0,
+              "n_gt": 1,
+              "n_pred": 7,
+              "label": "presence \u00b7 Lucchi \u00b7 recall 0.00"
+            },
+            {
+              "question_id": "crop_03d60b49db76:count",
+              "crop_id": "crop_03d60b49db76",
+              "task": "counting",
+              "dataset": "EM-H",
+              "obj_recall": 0.0,
+              "n_gt": 2,
+              "n_pred": 2,
+              "label": "counting \u00b7 EM-H \u00b7 recall 0.00"
+            },
+            {
+              "question_id": "crop_7890cccf5841:location_edge_1",
+              "crop_id": "crop_7890cccf5841",
+              "task": "location",
+              "dataset": "EM-H",
+              "obj_recall": 0.0,
+              "n_gt": 5,
+              "n_pred": 7,
+              "label": "location \u00b7 EM-H \u00b7 recall 0.00"
+            },
+            {
+              "question_id": "crop_fc0e0064d354:nearest_pair_relation",
+              "crop_id": "crop_fc0e0064d354",
+              "task": "relation",
+              "dataset": "EM-H",
+              "obj_recall": 0.0,
+              "n_gt": 2,
+              "n_pred": 7,
+              "label": "relation \u00b7 EM-H \u00b7 recall 0.00"
+            },
+            {
+              "question_id": "crop_43f7d6ff894b:shape_first",
+              "crop_id": "crop_43f7d6ff894b",
+              "task": "attribute",
+              "dataset": "EM-H",
+              "obj_recall": 0.0,
+              "n_gt": 2,
+              "n_pred": 7,
+              "label": "attribute \u00b7 EM-H \u00b7 recall 0.00"
+            }
+          ]
+        },
+        "trustworthy": {
+          "note": "Answer and action agree and the action clears the gate: a hand-off that can proceed.",
+          "cases": [
+            {
+              "question_id": "crop_02ef505e8070:presence",
+              "crop_id": "crop_02ef505e8070",
+              "task": "presence",
+              "dataset": "Lucchi",
+              "obj_recall": 1.0,
+              "n_gt": 1,
+              "n_pred": 2,
+              "label": "presence \u00b7 Lucchi \u00b7 recall 1.00"
+            },
+            {
+              "question_id": "crop_2f3818a30cbe:count",
+              "crop_id": "crop_2f3818a30cbe",
+              "task": "counting",
+              "dataset": "VNC",
+              "obj_recall": 1.0,
+              "n_gt": 2,
+              "n_pred": 2,
+              "label": "counting \u00b7 VNC \u00b7 recall 1.00"
+            },
+            {
+              "question_id": "crop_03bd6693652e:marked_region_1",
+              "crop_id": "crop_03bd6693652e",
+              "task": "location",
+              "dataset": "Lucchi",
+              "obj_recall": 1.0,
+              "n_gt": 2,
+              "n_pred": 2,
+              "label": "location \u00b7 Lucchi \u00b7 recall 1.00"
+            },
+            {
+              "question_id": "crop_8c214cfc6ef8:nearest_pair_relation",
+              "crop_id": "crop_8c214cfc6ef8",
+              "task": "relation",
+              "dataset": "EM-H",
+              "obj_recall": 0.667,
+              "n_gt": 3,
+              "n_pred": 2,
+              "label": "relation \u00b7 EM-H \u00b7 recall 0.67"
+            },
+            {
+              "question_id": "crop_7e9f74b31bc7:shape_first",
+              "crop_id": "crop_7e9f74b31bc7",
+              "task": "attribute",
+              "dataset": "Lucchi",
+              "obj_recall": 1.0,
+              "n_gt": 2,
+              "n_pred": 2,
+              "label": "attribute \u00b7 Lucchi \u00b7 recall 1.00"
+            }
+          ]
+        },
+        "lucky": {
+          "note": "Wrong answer, reliable action. The answer channel would have blocked a usable action.",
+          "cases": [
+            {
+              "question_id": "crop_2d363acc5663:count",
+              "crop_id": "crop_2d363acc5663",
+              "task": "counting",
+              "dataset": "Lucchi",
+              "obj_recall": 1.0,
+              "n_gt": 1,
+              "n_pred": 2,
+              "label": "counting \u00b7 Lucchi \u00b7 recall 1.00"
+            },
+            {
+              "question_id": "crop_59db9e15ec3e:location_grid_1",
+              "crop_id": "crop_59db9e15ec3e",
+              "task": "location",
+              "dataset": "Lucchi",
+              "obj_recall": 1.0,
+              "n_gt": 3,
+              "n_pred": 3,
+              "label": "location \u00b7 Lucchi \u00b7 recall 1.00"
+            },
+            {
+              "question_id": "crop_0b9078ee5217:nearest_pair_relation",
+              "crop_id": "crop_0b9078ee5217",
+              "task": "relation",
+              "dataset": "EM-H",
+              "obj_recall": 1.0,
+              "n_gt": 2,
+              "n_pred": 2,
+              "label": "relation \u00b7 EM-H \u00b7 recall 1.00"
+            },
+            {
+              "question_id": "crop_022bb9e627ce:shape_first",
+              "crop_id": "crop_022bb9e627ce",
+              "task": "attribute",
+              "dataset": "VNC",
+              "obj_recall": 1.0,
+              "n_gt": 1,
+              "n_pred": 2,
+              "label": "attribute \u00b7 VNC \u00b7 recall 1.00"
+            },
+            {
+              "question_id": "crop_44438f740bcb:count",
+              "crop_id": "crop_44438f740bcb",
+              "task": "counting",
+              "dataset": "Lucchi",
+              "obj_recall": 1.0,
+              "n_gt": 1,
+              "n_pred": 2,
+              "label": "counting \u00b7 Lucchi \u00b7 recall 1.00"
+            }
+          ]
+        },
+        "honest": {
+          "note": "Both channels fail, so answer-only monitoring already surfaces this region.",
+          "cases": [
+            {
+              "question_id": "crop_695b2d40d51d:count",
+              "crop_id": "crop_695b2d40d51d",
+              "task": "counting",
+              "dataset": "EM-H",
+              "obj_recall": 0.0,
+              "n_gt": 4,
+              "n_pred": 2,
+              "label": "counting \u00b7 EM-H \u00b7 recall 0.00"
+            },
+            {
+              "question_id": "crop_3c5666cf44f9:smallest_object_location",
+              "crop_id": "crop_3c5666cf44f9",
+              "task": "location",
+              "dataset": "EM-H",
+              "obj_recall": 0.0,
+              "n_gt": 6,
+              "n_pred": 2,
+              "label": "location \u00b7 EM-H \u00b7 recall 0.00"
+            },
+            {
+              "question_id": "crop_2f53e0c5a736:nearest_pair_relation",
+              "crop_id": "crop_2f53e0c5a736",
+              "task": "relation",
+              "dataset": "Lucchi",
+              "obj_recall": 0.0,
+              "n_gt": 4,
+              "n_pred": 2,
+              "label": "relation \u00b7 Lucchi \u00b7 recall 0.00"
+            },
+            {
+              "question_id": "crop_43f7fb3fded0:shape_first",
+              "crop_id": "crop_43f7fb3fded0",
+              "task": "attribute",
+              "dataset": "EM-H",
+              "obj_recall": 0.0,
+              "n_gt": 4,
+              "n_pred": 2,
+              "label": "attribute \u00b7 EM-H \u00b7 recall 0.00"
+            },
+            {
+              "question_id": "crop_0d7dfa854b5e:count",
+              "crop_id": "crop_0d7dfa854b5e",
+              "task": "counting",
+              "dataset": "EM-H",
+              "obj_recall": 0.0,
+              "n_gt": 3,
+              "n_pred": 2,
+              "label": "counting \u00b7 EM-H \u00b7 recall 0.00"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "dataset_order": [
+    "Lucchi",
+    "VNC",
+    "EM-H"
+  ],
+  "task_order": [
+    "presence",
+    "counting",
+    "location",
+    "relation",
+    "attribute"
+  ],
+  "dataset_labels": {
+    "lucchi_plus": "Lucchi",
+    "vnc_drosophila": "VNC",
+    "mitoem_human": "EM-H"
+  },
+  "n_records_total": 4306,
+  "images_released": 753,
+  "images_bytes": 38804783,
+  "records_sha256": "88b55b22e70fb9548e3ca624f2d06b64ec76c4330f8047275e02355e920e370e",
+  "notes": {
+    "location_row": "The Location task folds direct-location and marked-region probes together; both require resolving spatial evidence in the region.",
+    "case_study_metrics": "Point F1 and point-in-mask precision are not in the 541-record export. They are left empty rather than joined from another model condition.",
+    "image_coverage": "All 541 case-study crops are released. 212 of the 753 re-audit records have no released pixels; their point geometry is drawn on a labelled neutral grid and the tile says so."
+  }
+}

@@ -1,0 +1,5 @@
+streamlit>=1.45,<2
+pandas>=2.2
+numpy>=1.26
+pillow>=10.3
+requests>=2.31
