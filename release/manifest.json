@@ -282,7 +282,7 @@
     },
     "sft_variants": {
       "id": "sft_variants",
-      "label": "SFT-variant audit \u00b7 Qwen3-VL (753 records \u00d7 5 conditions)",
+      "label": "SFT-variant audit \u00b7 Qwen3-VL (753 records \u00d7 6 conditions)",
       "short_label": "SFT-variant audit (753)",
       "role": "The re-audit set: the same reliability measures recomputed after each supervised adaptation, on one matched record set.",
       "model": "Qwen3-VL",
@@ -291,7 +291,8 @@
         "Perception SFT",
         "Grounding SFT",
         "Staged SFT",
-        "Joint SFT"
+        "Joint SFT",
+        "Staged GRPO"
       ],
       "n_records": 753,
       "images_released": 753,
@@ -377,8 +378,34 @@
           "gap_hi": 0.094,
           "point_biserial": 0.028,
           "pim_prec_given_correct": 0.412
+        },
+        "Staged GRPO": {
+          "n": 753,
+          "vqa_acc": 0.507,
+          "obj_recall": 0.375,
+          "silent_failure_rate": 0.291,
+          "trustworthy_rate": 0.216,
+          "lucky_rate": 0.189,
+          "honest_rate": 0.304,
+          "P_reliable_given_correct": 0.427,
+          "P_unreliable_given_correct": 0.573,
+          "trust_gap": 0.044,
+          "gap_lo": -0.03,
+          "gap_hi": 0.117,
+          "point_biserial": 0.067,
+          "pim_prec_given_correct": 0.46
         }
       },
+      "reported_in_table": [
+        "Zero-shot",
+        "Perception SFT",
+        "Grounding SFT",
+        "Staged SFT",
+        "Joint SFT"
+      ],
+      "not_in_reported_table": [
+        "Staged GRPO"
+      ],
       "option_stats": {
         "k_distribution": {
           "1": 32,
@@ -633,10 +660,10 @@
     "vnc_drosophila": "VNC",
     "mitoem_human": "EM-H"
   },
-  "n_records_total": 4306,
+  "n_records_total": 5059,
   "images_released": 753,
   "images_bytes": 38804783,
-  "records_sha256": "88b55b22e70fb9548e3ca624f2d06b64ec76c4330f8047275e02355e920e370e",
+  "records_sha256": "fe4d6059d6f032a5ac8633eb94205ec598992296bf0888f5e1c9a1d5d64bf5e0",
   "notes": {
     "location_row": "The Location task folds direct-location and marked-region probes together; both require resolving spatial evidence in the region.",
     "case_study_metrics": "Point F1 and point-in-mask precision are not in the 541-record export. They are left empty rather than joined from another model condition.",

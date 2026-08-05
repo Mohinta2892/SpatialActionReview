@@ -102,15 +102,21 @@ def test_release_declares_both_builds(release):
     assert manifest["build_order"] == ["case_study", "sft_variants"]
     assert manifest["default_build"] == "case_study"
     assert manifest["builds"]["case_study"]["conditions"] == ["Staged GRPO"]
-    assert manifest["builds"]["sft_variants"]["conditions"] == list(SFT_TABLE)
+    sft = manifest["builds"]["sft_variants"]
+    # The five reported rows come first and in Table 3's order; anything beyond
+    # them must be declared as not part of the reported table.
+    assert sft["conditions"][:len(SFT_TABLE)] == list(SFT_TABLE)
+    assert sft["reported_in_table"] == list(SFT_TABLE)
+    assert set(sft["not_in_reported_table"]) == set(sft["conditions"]) - set(SFT_TABLE)
 
 
 def test_release_record_counts(release):
     df, manifest = release
     assert (df["build"] == "case_study").sum() == 541
-    for condition in SFT_TABLE:
+    for condition in manifest["builds"]["sft_variants"]["conditions"]:
         assert len(build_records(df, "sft_variants", condition)) == 753
-    assert len(df) == manifest["n_records_total"] == 541 + 5 * 753
+    n_sft = len(manifest["builds"]["sft_variants"]["conditions"])
+    assert len(df) == manifest["n_records_total"] == 541 + n_sft * 753
 
 
 def test_manifest_hash_matches_records(release):
@@ -277,7 +283,7 @@ def test_sft_ranges_quoted_in_section_4_5(release):
     df, manifest = release
     stats = [
         summarise(with_gate(build_records(df, "sft_variants", c), PAPER_TAU))
-        for c in manifest["builds"]["sft_variants"]["conditions"]
+        for c in manifest["builds"]["sft_variants"]["reported_in_table"]
     ]
     assert (round(min(s.vqa_acc for s in stats), 3),
             round(max(s.vqa_acc for s in stats), 3)) == (0.432, 0.529)
@@ -294,7 +300,7 @@ def test_sft_ranges_quoted_in_section_4_5(release):
 def test_every_sft_trust_gap_interval_includes_zero(release):
     """"every trust-gap interval in Table 3 includes zero.\""""
     df, manifest = release
-    for condition in manifest["builds"]["sft_variants"]["conditions"]:
+    for condition in manifest["builds"]["sft_variants"]["reported_in_table"]:
         s = summarise(with_gate(build_records(df, "sft_variants", condition), PAPER_TAU))
         assert s.gap_lo < 0 < s.gap_hi, condition
 

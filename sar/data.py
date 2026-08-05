@@ -72,8 +72,13 @@ def load_release(release_dir: Path = RELEASE_DIR) -> tuple[pd.DataFrame, dict]:
     for col in ("gt_centroids", "pred_points", "vqa_choices"):
         df[col] = df[col].map(json.loads)
 
-    conditions = [c for build in manifest["build_order"]
-                  for c in manifest["builds"][build]["conditions"]]
+    # A condition label can appear in more than one build (Staged GRPO is scored
+    # both on the 541-record case study and on the 753-record matched set), so the
+    # category list is deduplicated while keeping declaration order.
+    conditions = list(dict.fromkeys(
+        c for build in manifest["build_order"]
+        for c in manifest["builds"][build]["conditions"]
+    ))
     df["dataset"] = pd.Categorical(df["dataset"], categories=manifest["dataset_order"], ordered=True)
     df["task"] = pd.Categorical(df["task"], categories=manifest["task_order"], ordered=True)
     df["condition"] = pd.Categorical(df["condition"], categories=conditions, ordered=True)

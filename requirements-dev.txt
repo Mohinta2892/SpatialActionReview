@@ -1,0 +1,5 @@
+# Development-only. Not needed to run the dashboard; used by
+# scripts/capture_figures.py to produce the camera-ready figure panels.
+-r requirements.txt
+playwright>=1.44
+pytest>=8.0

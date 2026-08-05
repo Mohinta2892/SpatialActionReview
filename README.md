@@ -89,7 +89,7 @@ database, no external service.
 Yes, and that is checked rather than claimed:
 
 ```bash
-python -m pytest tests -q      # 78 passed
+python -m pytest tests -q      # 87 passed
 ```
 
 The tests hold the dashboard to the published numbers — the headline figures, all
@@ -102,6 +102,15 @@ To rebuild the data files from the original analysis outputs:
 ```bash
 python tools/build_release.py            # rebuild
 python tools/build_release.py --check    # verify
+```
+
+There is also a set of pre-publication checks — that the licence is verbatim, that
+nothing in the tree can fabricate a number, that no local paths or credentials are
+committed. One of them fails on purpose until the author fields in `CITATION.cff`
+are filled in:
+
+```bash
+python -m pytest -m release      # run before making the repository public
 ```
 
 The builder refuses to produce a data file it cannot vouch for. Mismatched record
@@ -137,8 +146,39 @@ release/                  the audit records and the crop images
 - [RUN_ON_GPU.md](RUN_ON_GPU.md) — regenerating the data, serving a model.
 - [app_implementation.md](app_implementation.md) — the full implementation record.
 
+## Scope: what is here and what is not
+
+This repository is the **audit** half of the work, and it is complete on its own
+terms — everything needed to reproduce every number in the paper is here.
+
+**Included.** The dashboard; the 4,306 audit records and 753 crops; the scoring and
+reliability analysis that turn per-record model outputs into the reported measures;
+the builder that assembles the records; the tests that hold all of it to the
+published values.
+
+**Not included.** The code that adapted the Qwen3-VL checkpoints (the supervised
+and reward-based fine-tuning recipes) and the resulting adapter weights. That work
+is reported separately and is not part of this study. The audit does not depend on
+it: the records already contain each model's answers and predicted points, so the
+reliability measures, the ledger, the risk map and every figure reproduce from what
+is here without retraining anything.
+
+If you want to audit a different model, you do not need our training code either —
+export your own run in the same paired answer–action schema and load it through
+**Your own run**. The required fields are listed in [PROVENANCE.md](PROVENANCE.md).
+
 ## Licence and citation
 
-A licence has not been chosen yet. [DEPLOY.md](DEPLOY.md) sets out the options and
-the one thing that has to be settled first: the microscope crops derive from the
-public Lucchi, VNC and MitoEM datasets, and each carries its own terms.
+The code, documentation and analysis in this repository are licensed under the
+**GNU Affero General Public License v3.0 or later** (`AGPL-3.0-or-later`) — see
+[LICENSE](LICENSE). In
+short: use it, study it, modify it and share it freely, including for research and
+teaching; if you distribute a modified version, or run one as a network service,
+you must make your source available under the same licence.
+
+To cite it, see [CITATION.cff](CITATION.cff), or cite the paper directly.
+
+The microscope crops in `release/images/` derive from the public **Lucchi**, **VNC**
+and **MitoEM** datasets. Those carry their own terms, which are not superseded by
+the licence above; the datasets are cited in the paper and recorded in
+[PROVENANCE.md](PROVENANCE.md).

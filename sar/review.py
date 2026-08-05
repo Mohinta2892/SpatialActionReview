@@ -36,8 +36,12 @@ ROUTES: tuple[Route, ...] = (
         "The point action may proceed to the downstream workflow as it stands.",
     ),
     Route(
-        "human_audit", "Send to human audit", "sent to audit",
-        "The image region needs direct inspection before the action is used.",
+        # The key stays `human_audit`: it is the identifier in the JSON export, in
+        # the CSS selector and in every decision already recorded. Only the wording
+        # shown to the supervisor changed.
+        "human_audit", "Escalate for expert review", "escalated",
+        "The image region needs direct inspection by an expert before the action "
+        "is used.",
     ),
     Route(
         "stricter_gate", "Hold for a stricter gate", "held",

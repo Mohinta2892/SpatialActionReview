@@ -20,6 +20,7 @@ import streamlit as st
 
 from sar import ingest as ingest_mod
 from sar import theme, ui
+from sar import urlstate
 from sar.ingest import IngestError
 from sar.data import (
     QUADRANT_BLURB,
@@ -142,6 +143,40 @@ def _ingest_upload(json_bytes: bytes, zip_bytes: bytes | None):
     }
 
 
+def _apply_url_state() -> list[str]:
+    """Seed session state from the URL, once per session.
+
+    Runs before any widget is created, so assigning widget-keyed state is legal.
+    Returns any rejected parameters so the page can say what it ignored.
+    """
+    if st.session_state.get("_url_applied"):
+        return st.session_state.get("_url_rejected", [])
+    st.session_state["_url_applied"] = True
+
+    view = urlstate.parse(
+        st.query_params,
+        default_build=DEFAULT_BUILD,
+        default_condition=BUILDS[DEFAULT_BUILD]["conditions"][0],
+        default_tau=PAPER_TAU,
+    )
+    st.session_state["build"] = view.build
+    # A condition only applies if the chosen source actually offers it.
+    offered = BUILDS.get(view.build, {}).get("conditions", [])
+    if view.condition and view.condition in offered:
+        st.session_state["condition"] = view.condition
+    elif offered:
+        st.session_state["condition"] = offered[0]
+    st.session_state["tau"] = view.tau
+    st.session_state["quadrant"] = view.quadrant
+    st.session_state["region"] = view.region
+    st.session_state["palette"] = view.palette
+    st.session_state["url_record"] = view.record
+
+    rejected = [f"{k} ({v})" for k, v in sorted(view.rejected.items())]
+    st.session_state["_url_rejected"] = rejected
+    return rejected
+
+
 def _init_state() -> None:
     st.session_state.setdefault("build", DEFAULT_BUILD)
     st.session_state.setdefault("condition", BUILDS[DEFAULT_BUILD]["conditions"][0])
@@ -150,6 +185,7 @@ def _init_state() -> None:
     st.session_state.setdefault("region", None)  # (task, dataset) or None
     st.session_state.setdefault("cursor", 0)
     st.session_state.setdefault("pending_qid", None)
+    st.session_state.setdefault("url_record", None)
     st.session_state.setdefault("palette", theme.DEFAULT)
     # The audit queue defaults to records whose crop image ships with the app,
     # so the crop view always opens on real evidence. Aggregates are unaffected:
@@ -163,6 +199,7 @@ def _init_state() -> None:
 
 
 _init_state()
+URL_REJECTED = _apply_url_state()
 
 
 # Every one of these runs as a widget callback. Streamlit forbids assigning to
@@ -449,6 +486,12 @@ else:
     summary = _summary(build, condition, tau)
     risk = _risk(build, condition, tau)
 
+if URL_REJECTED:
+    st.warning(
+        "Ignored these URL parameters and used the defaults instead: "
+        + ", ".join(URL_REJECTED)
+    )
+
 st.html(ui.header_html(
     model=model, condition=condition, build_label=build_label, tau=tau,
     summary=summary, signed_off=len(st.session_state[review_mod.STATE_KEY]),
@@ -474,13 +517,38 @@ current_record = None
 current_image_path = None
 queue_empty = True
 
+# The audit queue is derived once here: the ledger card reports its size and the
+# audit panel walks it, and a single definition keeps those two from drifting.
+queue = scored[scored["quadrant"] == st.session_state.quadrant]
+if st.session_state.region is not None:
+    _task, _dataset = st.session_state.region
+    queue = queue[(queue["task"].astype(str) == _task)
+                  & (queue["dataset"].astype(str) == _dataset)]
+# The image filter is only meaningful when some record actually has an image. An
+# uploaded run with no crops would otherwise show an empty queue and hide the
+# audit it came here for.
+images_available = bool(scored["has_image"].any())
+filter_images = st.session_state.images_only and images_available
+if filter_images:
+    queue = queue[queue["has_image"]]
+queue = queue.sort_values(["dataset", "task", "question_id"]).reset_index(drop=True)
+
+scope = [QUADRANT_LABEL[st.session_state.quadrant]]
+if st.session_state.region is not None:
+    scope.append(" / ".join(st.session_state.region))
+if filter_images:
+    scope.append("with crop image")
+elif not images_available:
+    scope.append("no crop images in this source")
+QUEUE_CAPTION = f"Queue: {' · '.join(scope)} — {len(queue)} record(s)"
+
 left, right = st.columns([1.02, 1.0], gap="large")
 
 
 # ------------------------------------------------------------------ left: ledger + risk map
 
 with left:
-    with st.container(border=True):
+    with st.container(border=True, key="panel_a"):
         st.html(ui.card_title(
             "Answer–action ledger",
             "Answer correctness A(c) against spatial-action reliability Rτ(c) on the same image "
@@ -506,6 +574,8 @@ with left:
                         on_click=_select_quadrant, args=(quad,),
                         width="stretch",
                     )
+
+        st.caption(QUEUE_CAPTION)
 
         stray_note = ui.stray_summary_html(summary)
         if stray_note:
@@ -585,19 +655,6 @@ with right:
             "the point action the workflow would have executed on the same pixels.",
         ))
 
-        queue = scored[scored["quadrant"] == st.session_state.quadrant]
-        if st.session_state.region is not None:
-            task, dataset = st.session_state.region
-            queue = queue[(queue["task"].astype(str) == task) & (queue["dataset"].astype(str) == dataset)]
-        # The image filter is only meaningful when some record actually has an
-        # image. An uploaded run with no crops would otherwise show an empty
-        # queue and hide the audit it came here for.
-        images_available = bool(scored["has_image"].any())
-        filter_images = st.session_state.images_only and images_available
-        if filter_images:
-            queue = queue[queue["has_image"]]
-        queue = queue.sort_values(["dataset", "task", "question_id"]).reset_index(drop=True)
-
         # A pinned worked example jumps the cursor to that record, if the current
         # filters still contain it.
         pending = st.session_state.pending_qid
@@ -605,14 +662,16 @@ with right:
             match = queue.index[queue["question_id"] == pending]
             st.session_state.cursor = int(match[0]) if len(match) else 0
 
-        scope = [QUADRANT_LABEL[st.session_state.quadrant]]
-        if st.session_state.region is not None:
-            scope.append(" / ".join(st.session_state.region))
-        if filter_images:
-            scope.append("with crop image")
-        elif not images_available:
-            scope.append("no crop images in this source")
-        st.caption(f"Queue: {' · '.join(scope)} — {len(queue)} record(s)")
+        # ?record=<crop_id> opens that region, once, if the filters contain it.
+        wanted = st.session_state.pop("url_record", None)
+        if wanted:
+            match = queue.index[queue["crop_id"] == wanted]
+            if len(match):
+                st.session_state.cursor = int(match[0])
+            else:
+                st.session_state["url_record_missing"] = wanted
+
+        st.caption(QUEUE_CAPTION)
 
         if queue.empty:
             st.info(
@@ -625,6 +684,7 @@ with right:
             record = queue.iloc[cursor]
             current_record = record
             queue_empty = False
+            st.session_state["open_crop_id"] = str(record["crop_id"])
 
             nav = st.columns([1, 1, 2.4])
             if nav[0].button("‹ prev", width="stretch", disabled=cursor == 0):
@@ -646,77 +706,81 @@ with right:
                 palette_name=palette,
             )
 
-            img_col, txt_col = st.columns([0.44, 0.56], gap="medium")
-            with img_col:
-                st.image(tile, width="stretch")
-                st.html(ui.tile_badge_html(available))
-                st.html(ui.key_legend_html())
-            with txt_col:
-                st.html(ui.verdict_html(record["quadrant"], QUADRANT_BLURB[record["quadrant"]]))
-                gate = bool(record["action_reliable"])
-                st.html(
-                    '<div class="sar-note">Hand-off reading: '
-                    + (
-                        "the answer is correct, so answer-only monitoring would clear this region, "
-                        "yet the point action the workflow would run does not pass the gate."
-                        if record["quadrant"] == "silent_failure"
-                        else "the answer is correct and the point action passes the gate."
-                        if record["quadrant"] == "trustworthy"
-                        else "the point action passes the gate although the answer is wrong, so the "
-                             "answer channel is not tracking action quality here."
-                        if record["quadrant"] == "lucky"
-                        else "both channels fail, so answer-only monitoring already flags this region."
+            gate = bool(record["action_reliable"])
+            with st.container(key="panel_b"):
+                img_col, txt_col = st.columns([0.44, 0.56], gap="medium")
+                with img_col:
+                    st.image(tile, width="stretch")
+                    st.html(ui.tile_badge_html(available))
+                    st.html(ui.key_legend_html())
+                with txt_col:
+                    st.html(ui.verdict_html(record["quadrant"],
+                                            QUADRANT_BLURB[record["quadrant"]]))
+                    st.html(
+                        '<div class="sar-note">Hand-off reading: '
+                        + (
+                            "the answer is correct, so answer-only monitoring would clear this "
+                            "region, yet the point action the workflow would run does not pass "
+                            "the gate."
+                            if record["quadrant"] == "silent_failure"
+                            else "the answer is correct and the point action passes the gate."
+                            if record["quadrant"] == "trustworthy"
+                            else "the point action passes the gate although the answer is wrong, "
+                                 "so the answer channel is not tracking action quality here."
+                            if record["quadrant"] == "lucky"
+                            else "both channels fail, so answer-only monitoring already flags "
+                                 "this region."
+                        )
+                        + "</div>"
                     )
-                    + "</div>"
-                )
-
-            flag = ui.stray_flag_html(record)
-            if flag:
-                st.html(flag)
-
-            st.html(ui.audit_html(record, gate_reliable=gate, tau=tau, image_available=available))
+                flag = ui.stray_flag_html(record)
+                if flag:
+                    st.html(flag)
+                st.html(ui.audit_html(record, gate_reliable=gate, tau=tau,
+                                      image_available=available))
 
             # ---------------------------------------------------- sign-off
             log = st.session_state[review_mod.STATE_KEY]
             qid = str(record["question_id"])
             existing = log.get(qid)
 
-            st.html(ui.card_title(
-                "Routing decision",
-                "The audit ends here. Record what should happen to this point action. Each "
-                "decision is saved together with the gate value τ that was in force and the "
-                "answer-action state the region was in, so a later reader can tell what it was "
-                "accepted against.",
-            ))
-            route_cols = st.columns(len(review_mod.ROUTES))
-            for col, route in zip(route_cols, review_mod.ROUTES):
-                with col:
-                    st.button(
-                        route.label,
-                        key=f"route_{route.key}",
-                        width="stretch",
-                        type=("primary" if existing and existing.route == route.key
-                              else "secondary"),
-                        on_click=_sign_off,
-                        args=(record, build_label, tau, route.key),
-                        help=route.blurb,
-                    )
-            st.text_input(
-                "Reason for this decision (optional)",
-                key="route_note",
-                placeholder="e.g. points sit on a neighbouring organelle, not the mitochondrion",
-                help="Saved with the decision and included in the review log and both exports. "
-                     "Type it before choosing a routing button.",
-            )
+            with st.container(key="panel_c"):
+                st.html(ui.card_title(
+                    "Routing decision",
+                    "The audit ends here. Record what should happen to this point action. "
+                    "Each decision is saved together with the gate value τ that was in force "
+                    "and the answer-action state the region was in, so a later reader can tell "
+                    "what it was accepted against.",
+                ))
+                route_cols = st.columns(len(review_mod.ROUTES))
+                for col, route in zip(route_cols, review_mod.ROUTES):
+                    with col:
+                        st.button(
+                            route.label,
+                            key=f"route_{route.key}",
+                            width="stretch",
+                            type=("primary" if existing and existing.route == route.key
+                                  else "secondary"),
+                            on_click=_sign_off,
+                            args=(record, build_label, tau, route.key),
+                            help=route.blurb,
+                        )
+                st.text_input(
+                    "Reason for this decision (optional)",
+                    key="route_note",
+                    placeholder="e.g. points sit on a neighbouring organelle, "
+                                "not the mitochondrion",
+                    help="Saved with the decision and included in the review log and both "
+                         "exports. Type it before choosing a routing button.",
+                )
+                if existing:
+                    stale = abs(existing.tau - tau) > 1e-9
+                    st.html(ui.signed_off_html(existing, stale=stale))
+                    st.button("Clear this decision", key="route_clear",
+                              on_click=_clear_sign_off, args=(qid,))
 
-            if existing:
-                stale = abs(existing.tau - tau) > 1e-9
-                st.html(ui.signed_off_html(existing, stale=stale))
-                st.button("Clear this decision", key="route_clear",
-                          on_click=_clear_sign_off, args=(qid,))
-
-            done, total = review_mod.coverage(log, queue["question_id"])
-            st.caption(f"Signed off in this queue: {done} / {total}")
+                done, total = review_mod.coverage(log, queue["question_id"])
+                st.caption(f"Signed off in this queue: {done} / {total}")
 
             export = queue.drop(columns=["has_image"]).copy()
             for col in ("gt_centroids", "pred_points", "vqa_choices"):
@@ -746,20 +810,18 @@ with sweep_tab:
         "gate: at the far left almost any action counts as good enough, at the far right the "
         "action has to find nearly every object."
     )
-    st.line_chart(
-        _tau_sweep_frame(scored) if upload_meta else _tau_sweep(build, condition),
-        x="τ",
-        y=["aligned-pass rate", "silent-failure rate"],
-        color=[theme.get(palette).reliable, theme.get(palette).silent],
-        height=280,
+    st.altair_chart(
+        ui.threshold_chart(
+            _tau_sweep_frame(scored) if upload_meta else _tau_sweep(build, condition),
+            tau=tau, palette_name=palette,
+        ),
+        width="stretch",
     )
     st.caption(
-        f"Read straight up from the gate you have set (τ = {tau:.2f}) to get the two top numbers "
-        "in the ledger above. The red line rising as you move right is the point: demanding more "
-        "of the action does not make the answers less trustworthy-looking — it just reveals more "
-        "of the regions where a correct answer was never backed by a usable action. Where you put "
-        "the gate decides which actions the workflow is allowed to run, so it is a safety setting, "
-        "not a chart option."
+        "The dots on the dashed line are the two top numbers in the ledger above. Moving the gate "
+        "right does not make the answers any less convincing — it only reveals more of the regions "
+        "where a correct answer was never backed by a usable action. Where the gate sits decides "
+        "which actions the workflow may run, so it is a safety setting rather than a chart option."
     )
 
 with table_tab:
@@ -853,12 +915,17 @@ with model_tab:
         model=st.session_state.endpoint_model,
         api_key=serve_mod.Endpoint.from_env().api_key,
     )
+    st.warning(
+        "**Not enabled on the hosted demo.** Re-asking needs a served checkpoint reachable from "
+        "wherever this app is running, so it is currently exercised on the local network only. "
+        "Everything else in the dashboard works without it.",
+        icon="⚠️",
+    )
     st.caption(
-        "Re-ask the model that is under audit. This closes the loop the rest of the dashboard "
-        "only inspects: put the same crop and the same two prompts back to a served checkpoint "
-        "and see whether the point action changes. Off unless an endpoint is configured — a "
-        "dashboard that quietly answered with a different model than the one being audited "
-        "would be worse than one that cannot re-ask at all."
+        "Re-ask the model under audit: the same crop and the same two prompts go back to a served "
+        "checkpoint, and the fresh answer and points appear beside the recorded ones. Stays off "
+        "until an endpoint is configured, so the dashboard never answers with a different model "
+        "than the one being audited."
     )
     cfg1, cfg2 = st.columns(2)
     cfg1.text_input("Endpoint base URL", key="endpoint_url",
@@ -941,10 +1008,18 @@ with model_tab:
                 )
 
 
-st.html(
-    '<div class="sar-foot">'
-    "Green crosses mark labelled objects; red rings mark the points the model would hand to "
-    "the workflow. Both are drawn from the stored coordinates — no position is inferred, and "
-    "no microscopy image is ever generated."
-    "</div>"
+# ------------------------------------------------------------------ URL state
+# Written last, once the open record is known, so the address bar always names the
+# exact view on screen: a state reached by clicking is shareable, and every figure
+# in the paper can cite the URL that produced it.
+_desired = urlstate.to_params(
+    build=build,
+    condition=condition if build != UPLOAD_BUILD else None,
+    tau=tau,
+    quadrant=st.session_state.quadrant,
+    region=st.session_state.region,
+    record=st.session_state.get("open_crop_id"),
+    palette=palette,
 )
+if dict(st.query_params) != _desired:
+    st.query_params.from_dict(_desired)

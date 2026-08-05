@@ -72,6 +72,12 @@ SFT_CONDITIONS = [
 ]
 SFT_N = 753
 
+# Staged GRPO also has a complete 753-record scoring on the matched audit set.
+# It is released as a sixth condition so its numbers are traceable to the shipped
+# release, and flagged, because it is not a row of the manuscript's Table 3.
+EXTRA_SFT_CONDITION = "Staged GRPO"
+EXTRA_SFT_SOURCE = "percrop_staged_grpo.csv"
+
 # Paper-facing dataset names; the raw id stays on every record for provenance.
 DATASET_LABEL = {
     "lucchi_plus": "Lucchi",
@@ -294,6 +300,64 @@ def build_sft_variants(workspace: Path, available_images: set[str]) -> list[dict
     return records
 
 
+def build_extra_sft(workspace: Path, available_images: set[str]) -> list[dict]:
+    """Staged GRPO over the 753-record matched set, from its own score file."""
+    path = workspace / "outputs" / EXTRA_SFT_SOURCE
+    if not path.exists():
+        return []
+    with path.open(encoding="utf-8", newline="") as fh:
+        rows = [r for r in csv.DictReader(fh) if r.get("condition") == EXTRA_SFT_CONDITION]
+    if len(rows) != SFT_N:
+        print(f"note: {EXTRA_SFT_SOURCE} has {len(rows)} rows for "
+              f"{EXTRA_SFT_CONDITION}, expected {SFT_N}; not released")
+        return []
+
+    paired = {r["question_id"]: r for r in read_jsonl(workspace / "outputs" / "paired_set.jsonl")}
+    records: list[dict] = []
+    for row in rows:
+        qid = row["question_id"]
+        pair = paired.get(qid)
+        if pair is None:
+            sys.exit(f"{EXTRA_SFT_CONDITION}: {qid} not found in paired_set.jsonl")
+        gt = points_to_pairs(json.loads(row["gt_centroids"]) if row.get("gt_centroids") else [])
+        pred = points_to_pairs(json.loads(row["pred_points"]) if row.get("pred_points") else [])
+        if len(gt) != int(row["n_gt"]) or len(pred) != int(row["n_pred"]):
+            sys.exit(f"{EXTRA_SFT_CONDITION}/{qid}: coordinate counts disagree with the scores")
+        crop_id = row["crop_id"]
+        records.append({
+            "build": "sft_variants",
+            "model": MODEL,
+            "condition": EXTRA_SFT_CONDITION,
+            "dataset_id": row["dataset"],
+            "dataset": DATASET_LABEL.get(row["dataset"], row["dataset"]),
+            "task": row["task"],
+            "probe_id": pair.get("probe_id", ""),
+            "crop_id": crop_id,
+            "question_id": qid,
+            "vqa_question": row.get("vqa_question") or pair.get("vqa_question", ""),
+            "vqa_choices": json.dumps(json.loads(row["vqa_choices"])
+                                      if row.get("vqa_choices") else
+                                      (pair.get("vqa_choices") or [])),
+            "expected_letter": row.get("expected_letter", ""),
+            "expected_answer": row.get("expected_answer", ""),
+            "pred_answer_snippet": row.get("pred_answer_snippet", ""),
+            "prediction_error": row.get("prediction_error", ""),
+            "answer_correct": int(row["answer_correct"]),
+            "n_gt": int(row["n_gt"]),
+            "n_pred": int(row["n_pred"]),
+            "obj_recall": float(row["obj_recall"]),
+            "point_f1": float(row["point_f1"]) if row.get("point_f1") else "",
+            "pim_prec": float(row["pim_prec"]) if row.get("pim_prec") else "",
+            "count_ae": float(row["count_ae"]) if row.get("count_ae") else
+                        float(abs(int(row["n_pred"]) - int(row["n_gt"]))),
+            "gt_centroids": json.dumps(gt),
+            "pred_points": json.dumps(pred),
+            "image_file": f"{crop_id}.png" if crop_id in available_images else "",
+            "source_image_path": row.get("image_path") or pair.get("image_path", ""),
+        })
+    return records
+
+
 # ------------------------------------------------------- summaries
 
 def summarise(records: list[dict], tau: float = TAU) -> dict:
@@ -456,6 +520,8 @@ def write_release(workspace: Path, out_dir: Path) -> dict:
 
     case_study = build_case_study(workspace, available)
     sft = build_sft_variants(workspace, available)
+    extra = build_extra_sft(workspace, available)
+    sft = sft + extra
     records = case_study + sft
 
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -468,6 +534,9 @@ def write_release(workspace: Path, out_dir: Path) -> dict:
     image_info = copy_images(workspace, out_dir / "images", records)
 
     sft_labels = [label for label, _, _ in SFT_CONDITIONS]
+    reported_sft = list(sft_labels)
+    if extra:
+        sft_labels.append(EXTRA_SFT_CONDITION)
     builds = {
         "case_study": {
             "id": "case_study",
@@ -501,6 +570,8 @@ def write_release(workspace: Path, out_dir: Path) -> dict:
                 label: summarise([r for r in sft if r["condition"] == label])
                 for label in sft_labels
             },
+            "reported_in_table": reported_sft,
+            "not_in_reported_table": [c for c in sft_labels if c not in reported_sft],
             "option_stats": option_stats([r for r in sft if r["condition"] == sft_labels[0]]),
             "demo_cases": pick_demo_cases([r for r in sft if r["condition"] == "Joint SFT"]),
         },

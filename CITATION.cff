@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+title: "Spatial Action Review: a dashboard for auditing language-to-action hand-offs in electron microscopy"
+message: "If you use this software or its released audit records, please cite the paper below."
+type: software
+license: AGPL-3.0-or-later
+repository-code: "https://github.com/REPLACE_ME/spatial-action-review"
+abstract: >-
+  Interactive visual analytics dashboard for auditing the hand-off between a
+  vision-language model's language answer and the point-set action an electron
+  microscopy analysis workflow would execute on the same image region. Ships the
+  audit records and crop images behind the accompanying paper, reproduces its
+  reported values under test, records human routing decisions, and can audit any
+  run exported in the same paired answer-action schema.
+keywords:
+  - visual analytics
+  - human-AI oversight
+  - multimodal large language models
+  - electron microscopy
+  - autonomous laboratories
+authors:
+  - family-names: REPLACE_ME
+    given-names: REPLACE_ME
+    affiliation: "University of Cambridge"
+    email: sm2667@cam.ac.uk
+preferred-citation:
+  type: conference-paper
+  title: "Spatial Action Review: A Visual Analytics Dashboard for Auditing Language-to-Action Hand-offs in Electron Microscopy"
+  year: 2026
+  collection-title: "VAxAutoSci: Visual Analytics for Autonomous Science, IEEE VIS"
+  authors:
+    - family-names: REPLACE_ME
+      given-names: REPLACE_ME
+      affiliation: "University of Cambridge"

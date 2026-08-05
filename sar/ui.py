@@ -62,6 +62,7 @@ def css(palette_name: str = theme_mod.DEFAULT) -> str:
   [data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] * {{
     color: var(--muted) !important;
   }}
+  [data-testid="stCaptionContainer"] p {{ font-size: 13px; line-height: 1.55; }}
   .stMarkdown, .stMarkdown p, .stMarkdown li, label, [data-testid="stWidgetLabel"] p {{
     color: var(--ink);
   }}
@@ -79,27 +80,64 @@ def css(palette_name: str = theme_mod.DEFAULT) -> str:
   /* Inputs. baseweb paints the control, its inner value slot and the dropdown
      list from the startup theme, so each needs the palette applied explicitly or
      it stays dark on the light palette. */
-  [data-baseweb="select"], [data-baseweb="select"] > div,
-  [data-baseweb="input"], [data-baseweb="input"] > div,
-  [data-baseweb="select"] [role="combobox"],
-  [data-testid="stSelectbox"] div, [data-testid="stTextInput"] div {{
+  /* Widget controls. Streamlit 1.60 builds the select and text inputs on
+     react-aria (data-rac), not baseweb, so these are matched by test id and ARIA
+     role — both stable — rather than by data-baseweb or an emotion class hash.
+     Only the control gets a fill: a broader selector also painted the widget
+     label, which then read as a highlighted strip. */
+  [data-testid="stSelectbox"] [data-rac],
+  [data-testid="stSelectbox"] [role="group"],
+  [data-testid="stTextInputRootElement"],
+  [data-baseweb="select"] > div, [data-baseweb="input"] > div,
+  [data-baseweb="base-input"] {{
     background-color: var(--panel2) !important; border-color: var(--hair) !important;
   }}
-  [data-baseweb="select"] *, [data-baseweb="input"] *,
-  [data-testid="stSelectbox"] input, [data-testid="stTextInput"] input {{
-    color: var(--ink) !important;
+  [data-testid="stSelectbox"] [role="combobox"],
+  [data-testid="stTextInputRootElement"] input,
+  [data-testid="stSelectbox"] [data-rac] *, [data-baseweb="select"] > div * {{
+    background-color: transparent !important; color: var(--ink) !important;
   }}
+  [data-testid="stSelectbox"] [role="combobox"]::placeholder,
+  [data-testid="stTextInputRootElement"] input::placeholder {{
+    color: var(--dim) !important; opacity: 1;
+  }}
+  /* Chevron only. The help icon is also an svg inside the widget, and it is
+     drawn with stroke on fill:none — filling it turns it into a dark disc. */
+  [data-testid="stSelectbox"] [role="group"] svg,
+  [data-testid="stTextInputRootElement"] svg {{
+    fill: var(--muted) !important; color: var(--muted) !important;
+  }}
+  /* Labels and their help icons sit outside the control and stay unfilled. */
+  [data-testid="stWidgetLabel"], [data-testid="stWidgetLabel"] *,
+  [data-testid="stTooltipIcon"], [data-testid="stTooltipIcon"] * {{
+    background-color: transparent !important;
+  }}
+  [data-testid="stWidgetLabel"] p {{ color: var(--ink) !important; }}
+  /* The help icon is stroke-on-none geometry; anything that fills it turns it
+     into a solid disc, and its button picks up a tinted hover state. */
+  [data-testid="stTooltipIcon"] button {{ background: transparent !important; border: none !important; }}
+  [data-testid="stTooltipIcon"] svg,
+  [data-testid="stTooltipIcon"] svg circle,
+  [data-testid="stTooltipIcon"] svg path,
+  [data-testid="stTooltipIcon"] svg line {{
+    fill: none !important; stroke: var(--dim) !important;
+  }}
+  [data-testid="stTooltipIcon"] button:hover svg,
+  [data-testid="stTooltipIcon"] button:hover svg circle,
+  [data-testid="stTooltipIcon"] button:hover svg path,
+  [data-testid="stTooltipIcon"] button:hover svg line {{ stroke: var(--phosphor) !important; }}
+  [data-testid="stElementToolbarButtonContainer"] {{ background: var(--panel2) !important; }}
   [data-testid="stSelectbox"] svg, [data-baseweb="select"] svg {{ fill: var(--muted) !important; }}
   [data-testid="stTextInput"] input::placeholder,
   [data-baseweb="input"] input::placeholder {{ color: var(--dim) !important; opacity: 1; }}
   /* The dropdown list is portalled to the document root, outside the sidebar, so
      it has to be targeted by its own test id rather than through an ancestor. */
-  [data-testid="stSelectboxVirtualDropdown"],
+  [data-testid="stSelectboxVirtualDropdown"], [role="listbox"],
   [data-baseweb="popover"] > div, [data-baseweb="menu"] {{
     background-color: var(--panel) !important;
     border: 1px solid var(--hair) !important;
   }}
-  [data-testid="stSelectboxVirtualDropdown"] [role="option"],
+  [data-testid="stSelectboxVirtualDropdown"] [role="option"], [role="listbox"] [role="option"],
   [data-baseweb="popover"] li, [data-baseweb="menu"] li {{
     background-color: transparent !important; color: var(--ink) !important;
   }}
@@ -144,7 +182,7 @@ def css(palette_name: str = theme_mod.DEFAULT) -> str:
      follow an in-app palette switch. */
   [class*="st-key-src_"] button {{
     min-height:0; padding:7px 10px; text-align:left; align-items:flex-start;
-    background:var(--panel2); border:1px solid var(--hair);
+    background:var(--panel2) !important; border:1px solid var(--hair) !important;
   }}
   [class*="st-key-src_"] button p {{
     font-family:var(--mono) !important; font-size:11px !important; margin:0 !important;
@@ -173,7 +211,8 @@ def css(palette_name: str = theme_mod.DEFAULT) -> str:
 
   /* palette toggle: two plain buttons so the selected state is ours, not baseweb's */
   [class*="st-key-pal_"] button {{
-    min-height:0; padding:5px 0; background:var(--panel2); border:1px solid var(--hair);
+    min-height:0; padding:5px 0;
+    background:var(--panel2) !important; border:1px solid var(--hair) !important;
   }}
   [class*="st-key-pal_"] button p {{
     font-family:var(--mono) !important; font-size:11px !important; margin:0 !important;
@@ -185,9 +224,23 @@ def css(palette_name: str = theme_mod.DEFAULT) -> str:
   [class*="st-key-pal_"] button[kind="primary"] p {{ color:var(--on-accent) !important; }}
 
   /* tabs */
-  .stTabs [data-baseweb="tab-list"] {{ border-bottom: 1px solid var(--hair); gap: 18px; }}
-  .stTabs [data-baseweb="tab"] {{ color: var(--muted); }}
-  .stTabs [aria-selected="true"] {{ color: var(--phosphor); }}
+  .stTabs [data-baseweb="tab-list"] {{
+    border-bottom: 1px solid var(--hair); gap: 22px; background: transparent !important;
+  }}
+  .stTabs [data-baseweb="tab"], .stTabs button[role="tab"] {{
+    background: transparent !important; padding-left: 0; padding-right: 0;
+  }}
+  .stTabs [data-baseweb="tab"] p, .stTabs button[role="tab"] p {{
+    color: var(--muted) !important; font-size: 14px !important;
+  }}
+  .stTabs [data-baseweb="tab"]:hover p, .stTabs button[role="tab"]:hover p {{
+    color: var(--ink) !important;
+  }}
+  .stTabs [aria-selected="true"] p {{ color: var(--phosphor) !important; font-weight: 600 !important; }}
+  /* Streamlit's selected-tab underline keeps its startup accent; ours must win. */
+  .stTabs [data-baseweb="tab-highlight"], .stTabs [data-baseweb="tab-border"] {{
+    background-color: var(--phosphor) !important;
+  }}
 
   /* cards */
   div[data-testid="stVerticalBlockBorderWrapper"] {{
@@ -212,8 +265,12 @@ def css(palette_name: str = theme_mod.DEFAULT) -> str:
                   line-height:1.7; }}
   .sar-readout b {{ color:var(--ink); font-weight:600; }}
   /* routing / sign-off */
+  /* !important throughout: Streamlit 1.60's emotion rules for a *secondary*
+     button beat a plain selector, so an unmarked background or border silently
+     does not apply. */
   [class*="st-key-route_"] button {{
-    min-height:0; padding:7px 6px; border:1px solid var(--hair); background:var(--panel2);
+    min-height:0; padding:7px 6px;
+    border:1px solid var(--hair) !important; background:var(--panel2) !important;
   }}
   [class*="st-key-route_"] button p {{
     font-family:var(--mono) !important; font-size:10.5px !important; margin:0 !important;
@@ -305,7 +362,7 @@ def css(palette_name: str = theme_mod.DEFAULT) -> str:
   /* worked-example buttons: compact, left-aligned, monospace descriptor */
   [class*="st-key-ex_"] button {{
     min-height:0; padding:5px 9px; text-align:left; align-items:flex-start;
-    background:transparent; border:1px solid var(--hair);
+    background:transparent !important; border:1px solid var(--hair) !important;
   }}
   [class*="st-key-ex_"] button p {{
     font-family:var(--mono) !important; font-size:10.5px !important;
@@ -379,7 +436,30 @@ def css(palette_name: str = theme_mod.DEFAULT) -> str:
     display:flex; gap:16px; margin-top:9px; font-family:var(--mono);
     font-size:10.5px; color:var(--muted); flex-wrap:wrap;
   }}
-  .sar-dot {{ display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; }}
+  /* Legend marks, matching the overlay in sar/render.py: a haloed cross for a
+     labelled object, a hollow ring for a predicted point. */
+  .sar-mark {{
+    display:inline-block; position:relative; width:18px; height:18px;
+    vertical-align:-5px; margin-right:7px; flex:0 0 auto;
+  }}
+  .sar-mark-gt {{
+    border-radius:50%;
+    background:color-mix(in srgb, var(--reliable) 30%, transparent);
+  }}
+  .sar-mark-gt::before, .sar-mark-gt::after {{
+    content:""; position:absolute; left:50%; top:50%; width:12px; height:2.4px;
+    border-radius:1.2px; background:var(--reliable);
+  }}
+  .sar-mark-gt::before {{ transform:translate(-50%,-50%) rotate(45deg); }}
+  .sar-mark-gt::after {{ transform:translate(-50%,-50%) rotate(-45deg); }}
+  .sar-mark-pred::before {{
+    content:""; position:absolute; left:50%; top:50%; width:11px; height:11px;
+    transform:translate(-50%,-50%); border:2.4px solid var(--silent); border-radius:50%;
+  }}
+  .sar-mark-pred::after {{
+    content:""; position:absolute; left:50%; top:50%; width:3.2px; height:1.2px;
+    transform:translate(-50%,-50%); background:var(--silent);
+  }}
   .sar-note {{
     font-family:var(--mono); font-size:11px; color:var(--phosphor);
     border-left:2px solid var(--phosphor); padding:2px 0 2px 9px; margin-top:10px;
@@ -388,10 +468,6 @@ def css(palette_name: str = theme_mod.DEFAULT) -> str:
   .sar-toolbar-label {{
     font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase;
     color:var(--dim); text-align:right; padding-top:9px;
-  }}
-  .sar-foot {{
-    margin-top:22px; padding-top:14px; border-top:1px solid var(--hair);
-    color:var(--dim); font-family:var(--mono); font-size:11px; line-height:1.6;
   }}
 </style>
 """
@@ -642,12 +718,19 @@ def verdict_html(quadrant: str, blurb: str) -> str:
 
 
 def key_legend_html() -> str:
+    """Legend swatches drawn as the marks they stand for.
+
+    Two filled dots told the reader nothing they could match against the tile, so
+    these are the same two marks: a green cross inside a soft halo, and a hollow
+    red ring with a centre tick. Built from CSS rather than inline SVG because
+    `st.html` sanitises SVG out, the same way it drops <style>. The proportions
+    follow `sar/render.py`, where halo : arm : ring radii are 0.072 : 0.032 :
+    0.028 of the tile width.
+    """
     return (
         '<div class="sar-keylegend">'
-        '<span><span class="sar-dot" style="background:var(--reliable)"></span>'
-        "ground-truth centroid</span>"
-        '<span><span class="sar-dot" style="background:var(--silent)"></span>'
-        "predicted point action</span>"
+        '<span><i class="sar-mark sar-mark-gt"></i>labelled object (ground truth)</span>'
+        '<span><i class="sar-mark sar-mark-pred"></i>point the model would act on</span>'
         "</div>"
     )
 
@@ -717,3 +800,60 @@ def stray_summary_html(summary) -> str:
         f"({pt_share:.0f}%) hit nothing. The gate counts coverage only, so it cannot see this."
         "</div>"
     )
+
+
+def threshold_chart(frame, *, tau: float, palette_name: str = theme_mod.DEFAULT):
+    """Threshold sweep with the gate in force drawn on the chart itself.
+
+    A caption telling the reader to "read up from tau" is a caption doing the
+    chart's job, so the gate is a labelled rule on the plot and the two series
+    are marked where they cross it.
+    """
+    import altair as alt
+
+    p = theme_mod.get(palette_name)
+    long = frame.melt("τ", var_name="series", value_name="share")
+    domain = ["aligned-pass rate", "silent-failure rate"]
+    colours = [p.reliable, p.silent]
+
+    axis = alt.Axis(labelColor=p.muted, titleColor=p.muted, tickColor=p.hair,
+                    domainColor=p.hair, gridColor=p.hair, gridOpacity=0.35,
+                    labelFont=MONO, titleFont=MONO, titleFontWeight="normal")
+
+    lines = alt.Chart(long).mark_line(strokeWidth=2.5).encode(
+        x=alt.X("τ:Q", title="action-reliability gate τ",
+                scale=alt.Scale(domain=[0.05, 0.95], nice=False), axis=axis),
+        y=alt.Y("share:Q", title="share of all image regions",
+                scale=alt.Scale(domain=[0, float(long["share"].max()) * 1.15]), axis=axis),
+        color=alt.Color("series:N",
+                        scale=alt.Scale(domain=domain, range=colours),
+                        legend=alt.Legend(title=None, orient="top", direction="horizontal",
+                                          labelColor=p.ink, labelFont=MONO, labelFontSize=11,
+                                          symbolStrokeWidth=3)),
+    )
+
+    gate = alt.Chart(frame.iloc[:1].assign(**{"τ": tau})).mark_rule(
+        color=p.phosphor, strokeWidth=1.5, strokeDash=[5, 4],
+    ).encode(x=alt.X("τ:Q", scale=alt.Scale(domain=[0.05, 0.95], nice=False)))
+
+    label = alt.Chart(frame.iloc[:1].assign(**{"τ": tau})).mark_text(
+        text=f"gate in force  τ = {tau:.2f}", align="left", dx=7, dy=-6,
+        baseline="top", color=p.phosphor, font=MONO, fontSize=10.5,
+    ).encode(x=alt.X("τ:Q", scale=alt.Scale(domain=[0.05, 0.95], nice=False)),
+             y=alt.value(4))
+
+    at_gate = long[(long["τ"] - tau).abs() < 1e-9]
+    dots = alt.Chart(at_gate).mark_point(size=95, filled=True, opacity=1).encode(
+        x=alt.X("τ:Q", scale=alt.Scale(domain=[0.05, 0.95], nice=False)),
+        y="share:Q",
+        color=alt.Color("series:N", scale=alt.Scale(domain=domain, range=colours), legend=None),
+        tooltip=[alt.Tooltip("series:N", title="series"),
+                 alt.Tooltip("share:Q", title="share", format=".3f"),
+                 alt.Tooltip("τ:Q", title="gate", format=".2f")],
+    )
+
+    # Drawn on the page background rather than a panel fill, so the chart does not
+    # sit in a visible white box between two captions.
+    return (lines + gate + label + dots).properties(height=300).configure_view(
+        stroke=None, fill=p.ground,
+    ).configure(background=p.ground)
