@@ -7,7 +7,7 @@ repository-code: "https://github.com/REPLACE_ME/spatial-action-review"
 abstract: >-
   Interactive visual analytics dashboard for auditing the hand-off between a
   vision-language model's language answer and the point-set action an electron
-  microscopy analysis workflow would execute on the same image region. Ships the
+  microscopy analysis workflow may consume on the same image region. Ships the
   audit records and crop images behind the accompanying paper, reproduces its
   reported values under test, records human routing decisions, and can audit any
   run exported in the same paired answer-action schema.

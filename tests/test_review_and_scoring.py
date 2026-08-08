@@ -248,3 +248,50 @@ def test_empty_document_is_still_valid():
     assert doc["totals"]["decisions"] == 0
     assert doc["decisions"] == []
     assert doc["routes"]
+
+
+# --- live re-ask overlay ---------------------------------------------------
+# Live points are new inference drawn beside a record, never merged into it, so
+# the layer must be additive and must not exist unless a re-ask was made.
+
+def test_live_points_are_a_separate_layer():
+    from sar.render import crop_tile
+
+    gt, pred, live = [[0.5, 0.3]], [[0.2, 0.2]], [[0.8, 0.8]]
+    plain, _ = crop_tile(None, gt, pred)
+    with_live, _ = crop_tile(None, gt, pred, live_points=live)
+    default_is_empty, _ = crop_tile(None, gt, pred, live_points=[])
+
+    assert plain.tobytes() != with_live.tobytes(), "live points were not drawn"
+    assert plain.tobytes() == default_is_empty.tobytes(), (
+        "an empty live layer must render exactly as no live layer"
+    )
+
+
+def test_live_layer_does_not_disturb_the_recorded_marks():
+    from sar.render import crop_tile
+
+    gt = [[0.5, 0.3]]
+    only_recorded, _ = crop_tile(None, gt, [[0.2, 0.2]])
+    recorded_plus_live, _ = crop_tile(None, gt, [[0.2, 0.2]], live_points=[[0.8, 0.8]])
+    only_live, _ = crop_tile(None, gt, [], live_points=[[0.8, 0.8]])
+
+    # The three tiles are mutually distinct: the recorded and the live marks are
+    # independently present or absent, so neither can be read as the other.
+    assert len({only_recorded.tobytes(), recorded_plus_live.tobytes(),
+                only_live.tobytes()}) == 3
+
+
+def test_live_scoring_never_writes_into_the_record():
+    """`reask` returns its own result object; it must not mutate the record."""
+    from sar import serve
+
+    record = {
+        "vqa_question": "q", "vqa_choices": ["a", "b"], "expected_letter": "A",
+        "gt_centroids": [[0.5, 0.5]],
+    }
+    before = dict(record)
+    endpoint = serve.Endpoint()          # unconfigured, so every call fails fast
+    result = serve.reask(endpoint, record, None, 0.5)
+    assert record == before
+    assert result.errors and result.obj_recall is None

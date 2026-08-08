@@ -21,6 +21,13 @@ import pandas as pd
 
 STATE_KEY = "review_log"
 
+STATE_LABEL = {
+    "trustworthy": "Aligned pass",
+    "silent_failure": "Silent failure",
+    "lucky": "Action-only pass",
+    "honest": "Blocked",
+}
+
 
 @dataclass(frozen=True)
 class Route:
@@ -33,23 +40,22 @@ class Route:
 ROUTES: tuple[Route, ...] = (
     Route(
         "accept", "Accept action", "accepted",
-        "The point action may proceed to the downstream workflow as it stands.",
+        "Record that the proposed point action may proceed to downstream use as it stands.",
     ),
     Route(
         # The key stays `human_audit`: it is the identifier in the JSON export, in
         # the CSS selector and in every decision already recorded. Only the wording
         # shown to the supervisor changed.
         "human_audit", "Escalate for expert review", "escalated",
-        "The image region needs direct inspection by an expert before the action "
-        "is used.",
+        "Record that the image region needs direct expert inspection before the action is used.",
     ),
     Route(
         "stricter_gate", "Hold for a stricter gate", "held",
-        "Do not accept at this gate value; re-audit with a stricter one.",
+        "Record that the point action should not be accepted at this gate value.",
     ),
     Route(
         "model_revision", "Flag for model revision", "flagged",
-        "The failure is systematic enough to belong in prompt or model revision.",
+        "Record that the failure should be considered during prompt or model revision.",
     ),
 )
 
@@ -124,6 +130,7 @@ def to_frame(log: dict[str, Disposition]) -> pd.DataFrame:
         return pd.DataFrame(columns=[f.name for f in Disposition.__dataclass_fields__.values()])
     frame = pd.DataFrame([asdict(d) for d in log.values()])
     frame["route_label"] = frame["route"].map(lambda k: ROUTE_BY_KEY[k].label)
+    frame["state_label"] = frame["state"].map(lambda k: STATE_LABEL.get(k, k))
     return frame.sort_values("decided_at", ascending=False).reset_index(drop=True)
 
 
@@ -134,13 +141,19 @@ def coverage(log: dict[str, Disposition], queue_ids) -> tuple[int, int]:
     return done, len(ids)
 
 
-def stale(log: dict[str, Disposition], tau: float) -> list[Disposition]:
+def stale(
+    log: dict[str, Disposition],
+    tau: float,
+) -> list[Disposition]:
     """Dispositions taken under a different gate value than the one now in force.
 
     Surfaced rather than silently rewritten: a record accepted at tau = 0.3 has
-    not been accepted at tau = 0.7, and the log should not pretend otherwise.
+    not been accepted at tau = 0.7.
     """
-    return [d for d in log.values() if abs(d.tau - tau) > 1e-9]
+    return [
+        d for d in log.values()
+        if abs(d.tau - tau) > 1e-9
+    ]
 
 
 SCHEMA_VERSION = 1
@@ -149,11 +162,11 @@ SCHEMA_VERSION = 1
 def to_document(log: dict[str, Disposition], *, context: dict | None = None) -> dict:
     """Serialise the review log as a self-describing JSON document.
 
-    Written so a downstream workflow can consume it without knowing anything
-    about the dashboard: the route vocabulary is included inline, each decision
-    carries the gate value and answer-action state it was taken under, and the
-    per-route totals are stated so a reader does not have to re-aggregate to
-    check they got the same answer.
+    Written so another reviewer can read it without knowing anything about the
+    dashboard: the route vocabulary is included inline, each decision carries
+    the gate value and answer-action state it was taken under, and the per-route
+    totals are stated so a reader does not have to re-aggregate to check they got
+    the same answer.
     """
     return {
         "schema": "spatial-action-review/routing-decisions",
@@ -166,15 +179,18 @@ def to_document(log: dict[str, Disposition], *, context: dict | None = None) -> 
             "decisions": len(log),
             "by_route": counts(log),
         },
-        "decisions": [asdict(d) for d in sorted(log.values(), key=lambda d: d.decided_at)],
+        "decisions": [
+            {**asdict(d), "state": STATE_LABEL.get(d.state, d.state)}
+            for d in sorted(log.values(), key=lambda d: d.decided_at)
+        ],
         "field_notes": {
             "tau": "Action-reliability gate in force when the decision was taken. A region "
                    "passes when its point action covers at least this fraction of the "
-                   "labelled objects.",
-            "state": "Answer-action state at the moment of the decision: trustworthy "
-                     "(answer correct, action passes), silent_failure (answer correct, action "
-                     "fails), lucky (answer wrong, action passes), honest (both fail).",
-            "obj_recall": "Fraction of labelled objects the point action covered.",
+                   "ground-truth objects.",
+            "state": "Answer-action state at the moment of the decision: aligned pass "
+                     "(answer correct, action passes), silent failure (answer correct, action "
+                     "fails), action-only pass (answer wrong, action passes), blocked (both fail).",
+            "obj_recall": "Fraction of ground-truth objects the point action covered.",
             "decided_at": "UTC, ISO 8601.",
         },
     }

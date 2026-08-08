@@ -31,9 +31,25 @@ import requests
 
 DEFAULT_TIMEOUT = 120
 
+# Ample for the checkpoints under audit, which answer directly and stop at their
+# own EOS, so the budget is never the binding constraint. A *reasoning* model is a
+# different matter: it spends the budget on a thinking trace first and can need
+# several times this to reach the answer, which is what the override is for.
+DEFAULT_MAX_TOKENS = 2048
+
 ENV_BASE_URL = "SAR_MODEL_BASE_URL"
 ENV_MODEL = "SAR_MODEL_NAME"
 ENV_KEY = "SAR_MODEL_API_KEY"
+ENV_MAX_TOKENS = "SAR_MODEL_MAX_TOKENS"
+
+
+def max_tokens_from_env(default: int = DEFAULT_MAX_TOKENS) -> int:
+    """Completion budget per call, overridable for models that think before answering."""
+    try:
+        value = int(os.environ.get(ENV_MAX_TOKENS, "") or default)
+    except ValueError:
+        return default
+    return value if value > 0 else default
 
 # The two prompts the paired evaluation uses. Kept verbatim in shape so a live
 # re-ask asks the same thing the released records were produced by.
@@ -96,7 +112,7 @@ def ask(
     image_path: Path,
     prompt: str,
     *,
-    max_tokens: int = 512,
+    max_tokens: int | None = None,
     temperature: float = 0.0,
 ) -> Reply:
     """Send one image + prompt. Returns a Reply; never raises for HTTP errors."""
@@ -112,7 +128,7 @@ def ask(
     body = {
         "model": endpoint.model,
         "temperature": temperature,
-        "max_tokens": max_tokens,
+        "max_tokens": max_tokens_from_env() if max_tokens is None else max_tokens,
         "messages": [{
             "role": "user",
             "content": [
@@ -139,9 +155,22 @@ def ask(
                      latency_s=latency)
     try:
         payload = response.json()
-        text = payload["choices"][0]["message"]["content"]
+        choice = payload["choices"][0]
+        text = choice["message"]["content"]
     except (ValueError, KeyError, IndexError) as exc:
         return Reply("", ok=False, error=f"Unexpected response shape: {exc}", latency_s=latency)
+
+    # An empty answer must be reported, not scored. A reasoning model that spends
+    # its whole budget on the thinking trace returns HTTP 200 with no content, and
+    # scoring that silently would put a fabricated 0.000 beside the released value.
+    if not str(text or "").strip():
+        reason = str(choice.get("finish_reason") or "")
+        detail = (f"the response hit the token limit before answering — the model is "
+                  f"probably emitting a reasoning trace; raise {ENV_MAX_TOKENS} "
+                  f"(currently {max_tokens_from_env()}) or serve it with thinking disabled"
+                  if reason == "length"
+                  else f"the endpoint returned an empty message (finish_reason={reason!r})")
+        return Reply("", ok=False, error=detail, latency_s=latency)
 
     return Reply(text=str(text), latency_s=latency, raw_model=str(payload.get("model", "")))
 

@@ -60,7 +60,7 @@ class Ingested:
     warnings: list[str] = field(default_factory=list)
 
 
-def _as_points(value) -> list[list[float]]:
+def as_points(value) -> list[list[float]]:
     """Accept [{'x':..,'y':..}], [[x,y]], or a JSON string of either."""
     if value is None or value == "":
         return []
@@ -83,7 +83,7 @@ def _as_points(value) -> list[list[float]]:
     return out
 
 
-def _as_list(value) -> list:
+def as_list(value) -> list:
     if value is None or value == "":
         return []
     if isinstance(value, str):
@@ -176,8 +176,8 @@ def ingest(payload: dict, image_dir: Path | None = None) -> Ingested:
         except (KeyError, TypeError, ValueError) as exc:
             raise IngestError(f"Record {crop.get('crop_id', '?')} has unreadable scores: {exc}")
 
-        gt = _as_points(crop.get("gt_centroids"))
-        pred = _as_points(crop.get("pred_points"))
+        gt = as_points(crop.get("gt_centroids"))
+        pred = as_points(crop.get("pred_points"))
         # Overlays must never claim more evidence than the record was scored on.
         if gt and len(gt) != n_gt:
             bad_gate += 1
@@ -200,7 +200,7 @@ def ingest(payload: dict, image_dir: Path | None = None) -> Ingested:
             "crop_id": crop_id,
             "question_id": str(crop.get("question_id") or crop_id),
             "vqa_question": str(crop.get("vqa_question") or ""),
-            "vqa_choices": _as_list(crop.get("vqa_choices")),
+            "vqa_choices": as_list(crop.get("vqa_choices")),
             "expected_letter": str(crop.get("expected_letter") or ""),
             "expected_answer": str(crop.get("expected_answer") or ""),
             "pred_answer_snippet": str(crop.get("pred_answer_snippet") or ""),

@@ -13,19 +13,19 @@ dashboard loads either into the same views:
                 change a reported value.
 
   sft_variants  Qwen3-VL zero-shot / Perception SFT / Grounding SFT /
-                Staged SFT / Joint SFT, 753 paired image regions each.
-                The re-audit table. Sources: outputs/percrop.csv,
+                Staged SFT / Joint SFT, 753 paired image regions each. The
+                re-audit table. Sources: outputs/percrop.csv,
                 outputs/paired_set.jsonl, outputs/preds_qwen3vl_*.jsonl.
 
-Staged GRPO deliberately does NOT borrow per-record point-F1 or point-in-mask
-precision from percrop.csv: those rows belong to other conditions and joining
-them would fabricate action metrics for this run. Fields the 541-record export
-does not carry are marked absent and the dashboard says so.
+Per-record point-F1 and point-in-mask precision for the case study come from
+outputs/percrop_staged_grpo.csv — a re-scoring of that same condition — and the
+join is refused unless it agrees with the export on every field they share, so
+no other condition's rows can contribute. Fields no source carries are marked
+absent and the dashboard says so.
 
-Image coverage: all 541 case-study crops are released. The 753-record build
-draws on the same 541 crops, so 212 of its records have no pixels; they keep
-every numeric and textual field and the app draws their point geometry on a
-labelled neutral grid. No image is ever synthesised.
+Image coverage: every record in both builds has its released crop image. No
+image is ever synthesised; an uploaded run without images has its point geometry
+drawn on a labelled neutral grid.
 
 Usage:
     python tools/build_release.py                  # writes ./release/
@@ -47,6 +47,14 @@ from PIL import Image
 
 APP_DIR = Path(__file__).resolve().parent.parent
 WORKSPACE = APP_DIR.parent
+
+sys.path.insert(0, str(APP_DIR))
+# Shared with the upload path on purpose: `vqa_choices` is a JSON-encoded string
+# in this project's own exports but a native list in `inspector_data.json` and in
+# anything `tools/prepare_upload.py` normalises. `_as_list` accepts either, so
+# option_stats() and the dashboard's upload loader always see the same K for the
+# same record instead of the release build silently assuming one encoding.
+from sar.ingest import as_list  # noqa: E402
 
 MODEL = "Qwen3-VL"
 TAU = 0.5
@@ -71,12 +79,6 @@ SFT_CONDITIONS = [
     ("Joint SFT", "preds_qwen3vl_joint_sft", "Joint SFT"),
 ]
 SFT_N = 753
-
-# Staged GRPO also has a complete 753-record scoring on the matched audit set.
-# It is released as a sixth condition so its numbers are traceable to the shipped
-# release, and flagged, because it is not a row of the manuscript's Table 3.
-EXTRA_SFT_CONDITION = "Staged GRPO"
-EXTRA_SFT_SOURCE = "percrop_staged_grpo.csv"
 
 # Paper-facing dataset names; the raw id stays on every record for provenance.
 DATASET_LABEL = {
@@ -300,64 +302,6 @@ def build_sft_variants(workspace: Path, available_images: set[str]) -> list[dict
     return records
 
 
-def build_extra_sft(workspace: Path, available_images: set[str]) -> list[dict]:
-    """Staged GRPO over the 753-record matched set, from its own score file."""
-    path = workspace / "outputs" / EXTRA_SFT_SOURCE
-    if not path.exists():
-        return []
-    with path.open(encoding="utf-8", newline="") as fh:
-        rows = [r for r in csv.DictReader(fh) if r.get("condition") == EXTRA_SFT_CONDITION]
-    if len(rows) != SFT_N:
-        print(f"note: {EXTRA_SFT_SOURCE} has {len(rows)} rows for "
-              f"{EXTRA_SFT_CONDITION}, expected {SFT_N}; not released")
-        return []
-
-    paired = {r["question_id"]: r for r in read_jsonl(workspace / "outputs" / "paired_set.jsonl")}
-    records: list[dict] = []
-    for row in rows:
-        qid = row["question_id"]
-        pair = paired.get(qid)
-        if pair is None:
-            sys.exit(f"{EXTRA_SFT_CONDITION}: {qid} not found in paired_set.jsonl")
-        gt = points_to_pairs(json.loads(row["gt_centroids"]) if row.get("gt_centroids") else [])
-        pred = points_to_pairs(json.loads(row["pred_points"]) if row.get("pred_points") else [])
-        if len(gt) != int(row["n_gt"]) or len(pred) != int(row["n_pred"]):
-            sys.exit(f"{EXTRA_SFT_CONDITION}/{qid}: coordinate counts disagree with the scores")
-        crop_id = row["crop_id"]
-        records.append({
-            "build": "sft_variants",
-            "model": MODEL,
-            "condition": EXTRA_SFT_CONDITION,
-            "dataset_id": row["dataset"],
-            "dataset": DATASET_LABEL.get(row["dataset"], row["dataset"]),
-            "task": row["task"],
-            "probe_id": pair.get("probe_id", ""),
-            "crop_id": crop_id,
-            "question_id": qid,
-            "vqa_question": row.get("vqa_question") or pair.get("vqa_question", ""),
-            "vqa_choices": json.dumps(json.loads(row["vqa_choices"])
-                                      if row.get("vqa_choices") else
-                                      (pair.get("vqa_choices") or [])),
-            "expected_letter": row.get("expected_letter", ""),
-            "expected_answer": row.get("expected_answer", ""),
-            "pred_answer_snippet": row.get("pred_answer_snippet", ""),
-            "prediction_error": row.get("prediction_error", ""),
-            "answer_correct": int(row["answer_correct"]),
-            "n_gt": int(row["n_gt"]),
-            "n_pred": int(row["n_pred"]),
-            "obj_recall": float(row["obj_recall"]),
-            "point_f1": float(row["point_f1"]) if row.get("point_f1") else "",
-            "pim_prec": float(row["pim_prec"]) if row.get("pim_prec") else "",
-            "count_ae": float(row["count_ae"]) if row.get("count_ae") else
-                        float(abs(int(row["n_pred"]) - int(row["n_gt"]))),
-            "gt_centroids": json.dumps(gt),
-            "pred_points": json.dumps(pred),
-            "image_file": f"{crop_id}.png" if crop_id in available_images else "",
-            "source_image_path": row.get("image_path") or pair.get("image_path", ""),
-        })
-    return records
-
-
 # ------------------------------------------------------- summaries
 
 def summarise(records: list[dict], tau: float = TAU) -> dict:
@@ -405,7 +349,7 @@ def option_stats(records: list[dict]) -> dict:
     counts: dict[int, int] = {}
     inverses = []
     for r in records:
-        k = len(json.loads(r["vqa_choices"]))
+        k = len(as_list(r["vqa_choices"]))
         counts[k] = counts.get(k, 0) + 1
         if k:
             inverses.append(1.0 / k)
@@ -520,8 +464,6 @@ def write_release(workspace: Path, out_dir: Path) -> dict:
 
     case_study = build_case_study(workspace, available)
     sft = build_sft_variants(workspace, available)
-    extra = build_extra_sft(workspace, available)
-    sft = sft + extra
     records = case_study + sft
 
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -535,8 +477,6 @@ def write_release(workspace: Path, out_dir: Path) -> dict:
 
     sft_labels = [label for label, _, _ in SFT_CONDITIONS]
     reported_sft = list(sft_labels)
-    if extra:
-        sft_labels.append(EXTRA_SFT_CONDITION)
     builds = {
         "case_study": {
             "id": "case_study",
@@ -556,10 +496,10 @@ def write_release(workspace: Path, out_dir: Path) -> dict:
         },
         "sft_variants": {
             "id": "sft_variants",
-            "label": f"SFT-variant audit · {MODEL} ({SFT_N} records × {len(sft_labels)} conditions)",
+            "label": f"SFT-variant audit · {MODEL} ({SFT_N} matched records × {len(sft_labels)} conditions)",
             "short_label": "SFT-variant audit (753)",
-            "role": "The re-audit set: the same reliability measures recomputed after each "
-                    "supervised adaptation, on one matched record set.",
+            "role": "The matched audit set: the same reliability measures recomputed for "
+                    "Zero-shot and four supervised variants on one shared record set.",
             "model": MODEL,
             "conditions": sft_labels,
             "n_records": SFT_N,
@@ -596,12 +536,14 @@ def write_release(workspace: Path, out_dir: Path) -> dict:
         "notes": {
             "location_row": "The Location task folds direct-location and marked-region probes "
                             "together; both require resolving spatial evidence in the region.",
-            "case_study_metrics": "Point F1 and point-in-mask precision are not in the 541-record "
-                                  "export. They are left empty rather than joined from another "
-                                  "model condition.",
-            "image_coverage": "All 541 case-study crops are released. 212 of the 753 re-audit "
-                              "records have no released pixels; their point geometry is drawn on "
-                              "a labelled neutral grid and the tile says so.",
+            "case_study_metrics": "Point F1 and point-in-mask precision are joined into the "
+                                  "541-record export from a re-scoring of the same Staged GRPO "
+                                  "condition, accepted only where it agrees with the export on "
+                                  "every field they share.",
+            "image_coverage": f"Every record in both builds has its released crop image "
+                              f"({image_info['n_images']} crops). No image is ever synthesised; an "
+                              f"uploaded run without images has its point geometry drawn on a "
+                              f"labelled neutral grid and the tile says so.",
         },
     }
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")

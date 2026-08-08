@@ -88,7 +88,7 @@ def point_metrics(pred: list, gt: list, threshold: float = POINT_THRESHOLD) -> d
 
     `on_target` is how many of the emitted points land on a distinct labelled
     object. `len(pred) - on_target` is therefore the number of points the
-    workflow would act on that correspond to no labelled object at all — a
+    predicted point set that correspond to no ground-truth object at all — a
     quantity the recall-only action gate cannot see.
     """
     if not pred and not gt:

@@ -197,34 +197,8 @@ def build_report(release_dir: Path, figures_dir: Path) -> dict:
     lines.append("           passing regions returning more points than the region has objects")
 
     # 4 --------------------------------------------------------------------
-    head(4, "Staged GRPO on the full 753-record matched set — candidate Table 3 row")
-    grpo = with_gate(build_records(df, "sft_variants", "Staged GRPO"), TAU)
-    s = summarise(grpo)
-    gap, lo, hi = bootstrap_gap(grpo)
-    out["4_grpo_753"] = {
-        "n": int(s.n), "vqa_acc": s.vqa_acc, "obj_recall": s.obj_recall,
-        "silent_failure_rate": s.silent_failure_rate, "trust_gap": gap,
-        "gap_lo": lo, "gap_hi": hi, "point_biserial": s.point_biserial,
-    }
-    lines.append(f"  record set        Matched set (753), Qwen3-VL / Staged GRPO")
-    lines.append(f"  flagged in the release as not a row of the reported table")
-    lines.append(f"  n                 {s.n}")
-    lines.append(f"  answer accuracy   {100 * s.vqa_acc:.1f}%   ({s.vqa_acc:.4f})")
-    lines.append(f"  mean obj recall   {100 * s.obj_recall:.1f}%   ({s.obj_recall:.4f})")
-    lines.append(f"  silent failure    {100 * s.silent_failure_rate:.1f}%   "
-                 f"({s.silent_failure_rate:.4f})")
-    lines.append(f"  trust gap         {100 * gap:+.1f} pp  "
-                 f"[{100 * lo:+.1f}, {100 * hi:+.1f}]  (interval "
-                 f"{'includes' if lo < 0 < hi else 'EXCLUDES'} zero)")
-    lines.append(f"  point-biserial    {s.point_biserial:+.3f}")
-    lines.append(f"  Table 3 row:      Staged GRPO & {100 * s.vqa_acc:.1f} & "
-                 f"{100 * s.obj_recall:.1f} & {100 * s.silent_failure_rate:.1f} & "
-                 f"{100 * gap:.1f} [{100 * lo:.1f}, {100 * hi:.1f}] & "
-                 f"{s.point_biserial:.3f}")
-
-    # 5 --------------------------------------------------------------------
-    head(5, "Table 2 marginals with Wilson 95% intervals (case study)")
-    out["5_marginals"] = {"task": {}, "dataset": {}}
+    head(4, "Table 2 marginals with Wilson 95% intervals (case study)")
+    out["4_marginals"] = {"task": {}, "dataset": {}}
     for axis, label in (("task", "task, pooled across datasets"),
                         ("dataset", "dataset, pooled across tasks")):
         lines.append(f"  {label}")
@@ -234,21 +208,21 @@ def build_report(release_dir: Path, figures_dir: Path) -> dict:
                       & (group["action_reliable"] == 0)).sum())
             n = len(group)
             lo_w, hi_w = wilson(sf, n)
-            out["5_marginals"][axis][str(key)] = {
+            out["4_marginals"][axis][str(key)] = {
                 "silent": sf, "n": n, "rate": sf / n, "lo": lo_w, "hi": hi_w}
             lines.append(f"    {str(key):<12} {sf:>7} {n:>5} {100 * sf / n:>7.1f}%   "
                          f"[{100 * lo_w:.1f}%, {100 * hi_w:.1f}%]")
         lines.append("")
     lines.append("  the location row pools direct-location and marked-region probes")
 
-    # 6 --------------------------------------------------------------------
-    head(6, "Case study excluding single-option (K=1) records")
+    # 5 --------------------------------------------------------------------
+    head(5, "Case study excluding single-option (K=1) records")
     k = k_of(case)
     kept = case[k >= 2]
     dropped = int((k == 1).sum())
     s6 = summarise(kept)
     gap6, lo6, hi6 = bootstrap_gap(kept)
-    out["6_no_k1"] = {"dropped": dropped, "n": int(s6.n),
+    out["5_no_k1"] = {"dropped": dropped, "n": int(s6.n),
                       "silent_failure_rate": s6.silent_failure_rate,
                       "conditional_failure": s6.p_unreliable_given_correct,
                       "trust_gap": gap6, "gap_lo": lo6, "gap_hi": hi6}
@@ -262,12 +236,12 @@ def build_report(release_dir: Path, figures_dir: Path) -> dict:
                  f"[{100 * lo6:+.1f}, {100 * hi6:+.1f}]  (interval "
                  f"{'includes' if lo6 < 0 < hi6 else 'EXCLUDES'} zero)")
 
-    # 7 --------------------------------------------------------------------
-    head(7, "Case study restricted to K >= 4 (guessing less likely)")
+    # 6 --------------------------------------------------------------------
+    head(6, "Case study restricted to K >= 4 (guessing less likely)")
     wide = case[k >= 4]
     s7 = summarise(wide)
     gap7, lo7, hi7 = bootstrap_gap(wide)
-    out["7_k_ge_4"] = {"n": int(s7.n), "trust_gap": gap7, "gap_lo": lo7, "gap_hi": hi7,
+    out["6_k_ge_4"] = {"n": int(s7.n), "trust_gap": gap7, "gap_lo": lo7, "gap_hi": hi7,
                        "point_biserial": s7.point_biserial}
     lines.append(f"  record set        Case study (541), K >= 4 -> {s7.n} records")
     lines.append(f"  trust gap         {100 * gap7:+.1f} pp  "
@@ -277,19 +251,19 @@ def build_report(release_dir: Path, figures_dir: Path) -> dict:
     lines.append("  -> the near-zero coupling "
                  f"{'survives' if lo7 < 0 < hi7 else 'does NOT survive'} the restriction")
 
-    # 8 --------------------------------------------------------------------
-    head(8, "Does the silent-failure rate track object density?")
+    # 7 --------------------------------------------------------------------
+    head(7, "Does the silent-failure rate track object density?")
     sf_flag = ((case["answer_correct"] == 1) & (case["action_reliable"] == 0)).astype(float)
     r8, p8, method = correlation_with_p(sf_flag.to_numpy(), case["n_gt"].to_numpy())
-    out["8_sf_vs_ngt"] = {"r": r8, "p": p8, "method": method}
+    out["7_sf_vs_ngt"] = {"r": r8, "p": p8, "method": method}
     lines.append(f"  record set        Case study (541)")
     lines.append(f"  corr(silent-failure indicator, n_gt)  r = {r8:+.4f}")
     lines.append(f"  p-value           {p8:.4f}   [{method}]")
     lines.append(f"  -> {'no' if p8 > 0.05 else 'some'} evidence that silent failure tracks "
                  "object density rather than model behaviour")
 
-    # 9 --------------------------------------------------------------------
-    head(9, "Tau sweep, case study")
+    # 8 --------------------------------------------------------------------
+    head(8, "Tau sweep, case study")
     sweep = []
     lines.append(f"    {'tau':>5} {'silent':>8} {'aligned':>8} {'trust gap':>11}   interval")
     for i in range(1, 20):
@@ -305,7 +279,7 @@ def build_report(release_dir: Path, figures_dir: Path) -> dict:
         lines.append(f"    {t:>5.2f} {100 * row['silent_failure_rate']:>7.1f}% "
                      f"{100 * row['aligned_pass_rate']:>7.1f}% "
                      f"{100 * gap_t:>+10.1f} pp   [{100 * lo_t:+.1f}, {100 * hi_t:+.1f}]")
-    out["9_tau_sweep"] = sweep
+    out["8_tau_sweep"] = sweep
     figures_dir.mkdir(parents=True, exist_ok=True)
     sweep_path = figures_dir / "tau_sweep.csv"
     with sweep_path.open("w", newline="", encoding="utf-8") as fh:
@@ -316,11 +290,11 @@ def build_report(release_dir: Path, figures_dir: Path) -> dict:
              if sweep_path.is_relative_to(APP_DIR) else sweep_path)
     lines.append(f"  written to {shown}")
 
-    # 10 -------------------------------------------------------------------
-    head(10, "Distribution of object recall, case study, 20 bins")
+    # 9 --------------------------------------------------------------------
+    head(9, "Distribution of object recall, case study, 20 bins")
     counts, edges = np.histogram(case["obj_recall"].to_numpy(dtype=float),
                                  bins=20, range=(0.0, 1.0))
-    out["10_recall_hist"] = {"counts": [int(c) for c in counts],
+    out["9_recall_hist"] = {"counts": [int(c) for c in counts],
                              "edges": [float(e) for e in edges]}
     widest = int(counts.max())
     for i, count in enumerate(counts):

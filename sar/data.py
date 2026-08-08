@@ -28,6 +28,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from .contracts import DEFAULT_CONTRACT, apply_action_contract, ensure_action_quality
+
 RELEASE_DIR = Path(__file__).resolve().parent.parent / "release"
 
 QUADRANTS = ("trustworthy", "silent_failure", "lucky", "honest")
@@ -41,8 +43,8 @@ QUADRANT_LABEL = {
 
 QUADRANT_BLURB = {
     "trustworthy": "Answer and spatial action both pass the action-reliability gate Rτ.",
-    "silent_failure": "Answer passes, spatial action fails. Route this image region for direct "
-                      "review before any downstream action is cleared.",
+    "silent_failure": "Answer passes, spatial action fails. Answer-only monitoring would clear "
+                      "this image region while its point action is not cleared for downstream use.",
     "lucky": "Answer fails, spatial action passes. The answer channel would have blocked a "
              "usable action, so it is not sound acceptance evidence either way.",
     "honest": "Answer and spatial action both fail. An answer-only overseer already sees this.",
@@ -72,9 +74,8 @@ def load_release(release_dir: Path = RELEASE_DIR) -> tuple[pd.DataFrame, dict]:
     for col in ("gt_centroids", "pred_points", "vqa_choices"):
         df[col] = df[col].map(json.loads)
 
-    # A condition label can appear in more than one build (Staged GRPO is scored
-    # both on the 541-record case study and on the 753-record matched set), so the
-    # category list is deduplicated while keeping declaration order.
+    # Condition labels are read from the manifest so the case-study condition and
+    # the five matched SFT-variant conditions stay in declared order.
     conditions = list(dict.fromkeys(
         c for build in manifest["build_order"]
         for c in manifest["builds"][build]["conditions"]
@@ -97,48 +98,37 @@ def build_records(df: pd.DataFrame, build: str, condition: str) -> pd.DataFrame:
 
 # ---------------------------------------------------------------- scoring
 
-def with_gate(df: pd.DataFrame, tau: float) -> pd.DataFrame:
+def with_gate(
+    df: pd.DataFrame,
+    tau: float,
+    *,
+    contract: str = DEFAULT_CONTRACT,
+    precision_tau: float | None = None,
+    count_tolerance: int = 0,
+) -> pd.DataFrame:
     """Attach the action gate, the quadrant label, and stray-action counts."""
-    out = df.copy()
-    out["action_reliable"] = (out["obj_recall"] >= tau).astype(int)
-    correct = out["answer_correct"] == 1
-    reliable = out["action_reliable"] == 1
-    out["quadrant"] = np.select(
-        [correct & reliable, correct & ~reliable, ~correct & reliable],
-        ["trustworthy", "silent_failure", "lucky"],
-        default="honest",
+    return apply_action_contract(
+        df,
+        contract=contract,
+        recall_tau=tau,
+        precision_tau=precision_tau,
+        count_tolerance=count_tolerance,
     )
-    return _with_action_quality(out)
 
 
 def _with_action_quality(df: pd.DataFrame) -> pd.DataFrame:
-    """Count how many emitted points land on a labelled object, and how many do not.
+    """Count how many emitted points land on a ground-truth object, and how many do not.
 
     The action gate is built from object recall, which asks only whether enough
     objects were covered. It is blind to the opposite error: a model can cover
     the objects *and* emit extra points that correspond to nothing. Each of those
-    is an action a workflow would execute on empty image. These columns are
+    is a point a downstream workflow may consume on empty image. These columns are
     derived here from the released coordinates rather than read from the export,
     because no shipped record set carries them.
     """
-    from .scoring import point_metrics
-
-    on_target: list[int] = []
-    precision: list[float] = []
-    f1: list[float] = []
-    for pred, gt in zip(df["pred_points"], df["gt_centroids"]):
-        m = point_metrics(list(pred or []), list(gt or []))
-        on_target.append(int(m["on_target"]))
-        precision.append(float(m["point_precision"]))
-        f1.append(float(m["point_f1"]))
-
-    out = df.copy()
-    out["points_on_target"] = on_target
-    out["points_stray"] = out["n_pred"].to_numpy() - np.asarray(on_target)
-    out["point_precision_derived"] = precision
-    out["point_f1_derived"] = f1
-    # The hazard the gate cannot see: the record clears, yet some of the actions
-    # it clears would fire at nothing.
+    out = ensure_action_quality(df)
+    # The hazard the gate cannot see: the record clears, yet some points in the
+    # cleared set land on nothing.
     out["stray_despite_pass"] = ((out["action_reliable"] == 1) & (out["points_stray"] > 0)).astype(int)
     return out
 
@@ -244,7 +234,7 @@ def summarise(scored: pd.DataFrame, n_boot: int = N_BOOT, seed: int = BOOT_SEED)
 
 
 def risk_map(scored: pd.DataFrame) -> pd.DataFrame:
-    """Silent-failure rate per (task, dataset) workflow region."""
+    """Silent-failure rate per (task, dataset) cell."""
     grouped = scored.groupby(["task", "dataset"], observed=True)
     out = grouped.apply(
         lambda g: pd.Series({

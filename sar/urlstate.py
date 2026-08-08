@@ -19,6 +19,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from .contracts import DEFAULT_CONTRACT
+
 # --- source ---------------------------------------------------------------
 SOURCE_TO_BUILD = {
     "case_study": "case_study",
@@ -52,7 +54,9 @@ THEMES = ("day", "night")
 
 TAU_MIN, TAU_MAX, TAU_STEP = 0.05, 0.95, 0.05
 
-PARAMS = ("source", "condition", "tau", "state", "risk_cell", "record", "theme")
+PARAMS = (
+    "source", "condition", "tau", "state", "risk_cell", "record", "theme",
+)
 
 
 @dataclass
@@ -61,6 +65,9 @@ class ViewState:
     build: str
     condition: str | None
     tau: float
+    contract: str
+    precision_tau: float
+    count_tolerance: int
     quadrant: str
     region: tuple[str, str] | None
     record: str | None
@@ -84,6 +91,9 @@ def parse(
     default_build: str,
     default_condition: str | None,
     default_tau: float,
+    default_contract: str = DEFAULT_CONTRACT,
+    default_precision_tau: float = 0.5,
+    default_count_tolerance: int = 0,
     default_quadrant: str = "silent_failure",
     default_palette: str = "night",
 ) -> ViewState:
@@ -141,6 +151,48 @@ def parse(
             else:
                 tau = _snap_tau(value)
 
+    # Accepted camera-ready gate: object recall only. Legacy links may still
+    # contain old gate parameters, but they cannot change the action verdict.
+    contract = default_contract
+    raw = get("contract")
+    if raw is not None:
+        if raw != DEFAULT_CONTRACT:
+            rejected["contract"] = f"{raw!r} is not part of the accepted dashboard gate"
+
+    # precision_tau
+    precision_tau = default_precision_tau
+    raw = get("precision_tau")
+    if raw is not None:
+        try:
+            value = float(raw)
+        except ValueError:
+            rejected["precision_tau"] = f"{raw!r} is not a number"
+        else:
+            if not (TAU_MIN - 1e-9 <= value <= TAU_MAX + 1e-9):
+                rejected["precision_tau"] = f"{value} is outside [{TAU_MIN}, {TAU_MAX}]"
+            else:
+                if abs(_snap_tau(value) - default_precision_tau) > 1e-9:
+                    rejected["precision_tau"] = (
+                        "ignored; the accepted dashboard gate uses object recall only"
+                    )
+
+    # count_tolerance
+    count_tolerance = default_count_tolerance
+    raw = get("count_tolerance")
+    if raw is not None:
+        try:
+            value = int(raw)
+        except ValueError:
+            rejected["count_tolerance"] = f"{raw!r} is not an integer"
+        else:
+            if not (0 <= value <= 4):
+                rejected["count_tolerance"] = f"{value} is outside [0, 4]"
+            else:
+                if value != default_count_tolerance:
+                    rejected["count_tolerance"] = (
+                        "ignored; the accepted dashboard gate uses object recall only"
+                    )
+
     # state
     quadrant = default_quadrant
     raw = get("state")
@@ -173,7 +225,8 @@ def parse(
             rejected["theme"] = f"{raw!r} is not one of {sorted(THEMES)}"
 
     return ViewState(
-        build=build, condition=condition, tau=tau, quadrant=quadrant,
+        build=build, condition=condition, tau=tau, contract=contract,
+        precision_tau=precision_tau, count_tolerance=count_tolerance, quadrant=quadrant,
         region=region, record=record, palette=palette, rejected=rejected,
     )
 

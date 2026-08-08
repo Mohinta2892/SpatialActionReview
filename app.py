@@ -58,9 +58,16 @@ def _load():
 
 
 @st.cache_data(show_spinner=False)
-def _scored(build: str, condition: str, tau: float) -> pd.DataFrame:
+def _scored(
+    build: str,
+    condition: str,
+    tau: float,
+) -> pd.DataFrame:
     df, _ = _load()
-    return with_gate(build_records(df, build, condition), tau).reset_index(drop=True)
+    return with_gate(
+        build_records(df, build, condition),
+        tau,
+    ).reset_index(drop=True)
 
 
 @st.cache_data(show_spinner=False)
@@ -77,30 +84,25 @@ def _risk(build: str, condition: str, tau: float) -> pd.DataFrame:
 def _tau_sweep(build: str, condition: str) -> pd.DataFrame:
     df, _ = _load()
     sub = build_records(df, build, condition)
-    rows = []
-    for tau in [round(0.05 * i, 2) for i in range(1, 20)]:
-        scored = with_gate(sub, tau)
-        correct = scored["answer_correct"] == 1
-        reliable = scored["action_reliable"] == 1
-        rows.append({
-            "τ": tau,
-            "aligned-pass rate": float((correct & reliable).mean()),
-            "silent-failure rate": float((correct & ~reliable).mean()),
-        })
-    return pd.DataFrame(rows)
+    return _tau_sweep_source(sub)
 
 
-def _tau_sweep_frame(scored: pd.DataFrame) -> pd.DataFrame:
+def _tau_sweep_source(records: pd.DataFrame) -> pd.DataFrame:
     """Threshold sweep for a record set already in memory (an uploaded run)."""
     rows = []
     for tau in [round(0.05 * i, 2) for i in range(1, 20)]:
-        gated = with_gate(scored, tau)
+        gated = with_gate(records, tau)
         correct = gated["answer_correct"] == 1
         reliable = gated["action_reliable"] == 1
+        silent = correct & ~reliable
         rows.append({
             "τ": tau,
             "aligned-pass rate": float((correct & reliable).mean()),
-            "silent-failure rate": float((correct & ~reliable).mean()),
+            "silent-failure rate": float(silent.mean()),
+            "actions cleared": int(reliable.sum()),
+            "held for review": int((~reliable).sum()),
+            "silent-failure queue": int(silent.sum()),
+            "answer-correct audit": int(silent.sum()),
         })
     return pd.DataFrame(rows)
 
@@ -108,7 +110,27 @@ def _tau_sweep_frame(scored: pd.DataFrame) -> pd.DataFrame:
 @st.cache_data(show_spinner=False)
 def _conditions_at(build: str, conditions: tuple[str, ...], tau: float) -> pd.DataFrame:
     df, _ = _load()
-    return condition_table(df, build, list(conditions), tau)
+    rows = []
+    for cond in conditions:
+        s = summarise(with_gate(
+            build_records(df, build, cond),
+            tau,
+        ))
+        rows.append({
+            "Condition": cond,
+            "n": s.n,
+            "VQA accuracy": s.vqa_acc,
+            "Object recall": s.obj_recall,
+            "Silent failure": s.silent_failure_rate,
+            "Aligned pass": s.trustworthy_rate,
+            "P(R|A=1)": s.p_reliable_given_correct,
+            "P(R|A=0)": s.p_reliable_given_wrong,
+            "Trust gap": s.trust_gap,
+            "CI low": s.gap_lo,
+            "CI high": s.gap_hi,
+            "Point-biserial": s.point_biserial,
+        })
+    return pd.DataFrame(rows)
 
 
 df_all, manifest = _load()
@@ -327,7 +349,33 @@ with st.sidebar:
         with st.expander("Try it without a run of your own"):
             st.markdown(
                 "Any export in this schema works. The two record sets shipped with the app are "
-                "themselves valid uploads, which is how the loader is regression-tested."
+                "themselves valid uploads, which is how the loader is regression-tested. For a "
+                "minimal example, download the 10-record file below (with its crop images) and "
+                "drop both back into the two uploaders above."
+            )
+            example_json = APP_DIR / "examples" / "example_inspector_data.json"
+            example_zip = APP_DIR / "examples" / "example_crops.zip"
+            if example_json.exists():
+                ex1, ex2 = st.columns(2)
+                ex1.download_button(
+                    "example_inspector_data.json",
+                    data=example_json.read_bytes(),
+                    file_name="example_inspector_data.json",
+                    mime="application/json",
+                    width="stretch",
+                )
+                if example_zip.exists():
+                    ex2.download_button(
+                        "example_crops.zip",
+                        data=example_zip.read_bytes(),
+                        file_name="example_crops.zip",
+                        mime="application/zip",
+                        width="stretch",
+                    )
+            st.caption(
+                "If your own export doesn't already match this schema, "
+                "`tools/prepare_upload.py` will get it there — see the README's "
+                "\"Preparing your own export\" section."
             )
         build_meta = None
     else:
@@ -353,13 +401,30 @@ with st.sidebar:
         help="Rτ(c) = 1[obj_recall(c) ≥ τ]. A region's point action passes the gate when its "
              "points cover at least this fraction of the labelled mitochondria.",
     )
+
     st.caption(
-        f"The gate is the pass condition for a point action: a region **passes** when its "
-        f"points cover at least **{100 * st.session_state.tau:.0f}%** of the labelled "
-        "mitochondria in that region, and **fails** otherwise. Everything on the page is "
-        "recomputed from this one setting."
+        "Accepted action-reliability definition: "
+        f"**Rτ(c)=1[obj_recall(c) ≥ {st.session_state.tau:.2f}]**. "
+        "Changing τ recomputes the ledger, risk map, audit queue, and review log context."
     )
     st.button("Reset run configuration", width="stretch", on_click=_reset_config)
+
+    with st.expander("About this dashboard"):
+        st.markdown(
+            "A supervisor can inspect the language answer while a downstream workflow may "
+            "consume the paired point action. This is a visual analytics tool for exposing "
+            "where those two channels disagree, and for recording what a reviewer decides to "
+            "do about it.\n\n"
+            "- **The audit is the product.** Every routing choice is a recorded review "
+            "decision, held with the gate value and behavioural state in force and "
+            "exportable as CSV or JSON.\n"
+            "- **Sign-off is the handoff.** Downstream execution — segmentation, "
+            "field-of-view selection, reacquisition, microscope control — consumes those "
+            "exported decisions rather than being issued from here.\n"
+            "- **The action channel is plain coordinates.** Normalised points parsed from "
+            "the model response; no MCP server is involved, and a live re-ask goes to an "
+            "OpenAI-compatible endpoint for the record on screen only."
+        )
 
     if build_meta is not None:
         st.divider()
@@ -501,8 +566,8 @@ if upload_meta is not None:
     st.success(
         f"Audited **{len(scored):,}** records from your file — {model} / {condition} — "
         f"with **{upload_meta['n_images']}** matching crop image(s). Every state below is "
-        "recomputed from `answer_correct` and `obj_recall` at τ = "
-        f"{tau:.2f}; the file's own quadrant labels are not used."
+        "recomputed from `answer_correct` and the object-recall gate; "
+        "the file's own quadrant labels are not used."
     )
     if upload_meta["missing_fields"]:
         st.info(
@@ -583,7 +648,7 @@ with left:
 
     with st.container(border=True):
         st.html(ui.card_title(
-            "Risk map · silent-failure rate by workflow region",
+            "Risk map · silent-failure rate by task × dataset",
             "Task × dataset regions where accepting the language answer would not guarantee a "
             "reliable point action. Darker cells need direct action review. Select a cell to "
             "restrict the audit queue to that region; select it again to clear.",
@@ -652,7 +717,7 @@ with right:
         st.html(ui.card_title(
             "Image-region audit",
             "One record at a time: the question a scientist reads, the answer the model gave, and "
-            "the point action the workflow would have executed on the same pixels.",
+            "the paired point action audited before downstream use on the same pixels.",
         ))
 
         # A pinned worked example jumps the cursor to that record, if the current
@@ -675,8 +740,8 @@ with right:
 
         if queue.empty:
             st.info(
-                "No records match this combination of behavioural region, workflow region, and "
-                "image filter. Clear the risk-map selection or pick another ledger cell."
+                "No records match this combination of answer-action state, task × dataset cell, "
+                "and image filter. Clear the risk-map selection or pick another ledger cell."
             )
         else:
             cursor = min(st.session_state.cursor, len(queue) - 1)
@@ -720,8 +785,8 @@ with right:
                         '<div class="sar-note">Hand-off reading: '
                         + (
                             "the answer is correct, so answer-only monitoring would clear this "
-                            "region, yet the point action the workflow would run does not pass "
-                            "the gate."
+                            "region, yet the paired point action is not cleared for downstream "
+                            "use."
                             if record["quadrant"] == "silent_failure"
                             else "the answer is correct and the point action passes the gate."
                             if record["quadrant"] == "trustworthy"
@@ -747,10 +812,10 @@ with right:
             with st.container(key="panel_c"):
                 st.html(ui.card_title(
                     "Routing decision",
-                    "The audit ends here. Record what should happen to this point action. "
-                    "Each decision is saved together with the gate value τ that was in force "
-                    "and the answer-action state the region was in, so a later reader can tell "
-                    "what it was accepted against.",
+                    "Human-AI hand-off: the supervisor reviews the evidence and records how "
+                    "the proposed point action should be handled. Each decision is saved with "
+                    "the gate value τ and the answer-action state, so a later reader can tell "
+                    "what was reviewed.",
                 ))
                 route_cols = st.columns(len(review_mod.ROUTES))
                 for col, route in zip(route_cols, review_mod.ROUTES):
@@ -774,7 +839,7 @@ with right:
                          "exports. Type it before choosing a routing button.",
                 )
                 if existing:
-                    stale = abs(existing.tau - tau) > 1e-9
+                    stale = bool(review_mod.stale({qid: existing}, tau))
                     st.html(ui.signed_off_html(existing, stale=stale))
                     st.button("Clear this decision", key="route_clear",
                               on_click=_clear_sign_off, args=(qid,))
@@ -783,6 +848,8 @@ with right:
                 st.caption(f"Signed off in this queue: {done} / {total}")
 
             export = queue.drop(columns=["has_image"]).copy()
+            export["state"] = export["quadrant"].map(QUADRANT_LABEL)
+            export = export.drop(columns=["quadrant"])
             for col in ("gt_centroids", "pred_points", "vqa_choices"):
                 export[col] = export[col].map(repr)
             st.download_button(
@@ -812,34 +879,59 @@ with sweep_tab:
     )
     st.altair_chart(
         ui.threshold_chart(
-            _tau_sweep_frame(scored) if upload_meta else _tau_sweep(build, condition),
+            _tau_sweep_source(scored)
+            if upload_meta else
+            _tau_sweep(build, condition),
             tau=tau, palette_name=palette,
         ),
         width="stretch",
     )
+    sweep_frame = (
+        _tau_sweep_source(scored)
+        if upload_meta else
+        _tau_sweep(build, condition)
+    )
+    st.dataframe(
+        sweep_frame[[
+            "τ", "actions cleared", "held for review", "silent-failure queue",
+            "answer-correct audit",
+        ]],
+        hide_index=True,
+        width="stretch",
+        column_config={
+            "τ": st.column_config.NumberColumn("τ", format="%.2f"),
+            "actions cleared": st.column_config.NumberColumn("actions cleared", format="%d"),
+            "held for review": st.column_config.NumberColumn("held for review", format="%d"),
+            "silent-failure queue": st.column_config.NumberColumn("silent-failure queue", format="%d"),
+            "answer-correct audit": st.column_config.NumberColumn("answer-correct audit", format="%d"),
+        },
+    )
     st.caption(
         "The dots on the dashed line are the two top numbers in the ledger above. Moving the gate "
         "right does not make the answers any less convincing — it only reveals more of the regions "
-        "where a correct answer was never backed by a usable action. Where the gate sits decides "
-        "which actions the workflow may run, so it is a safety setting rather than a chart option."
+        "where a correct answer was not backed by a point action that passes the gate. Where the "
+        "gate sits decides which point actions are cleared for downstream use, so it is an audit "
+        "setting rather than a chart option."
     )
 
 with table_tab:
     reaudit = "sft_variants"
     reaudit_meta = BUILDS[reaudit]
     st.caption(
-        f"The re-audit loop: the same reliability measures recomputed for each of the "
-        f"{len(reaudit_meta['conditions'])} supervised conditions in "
-        f"**{reaudit_meta['short_label']}**, at τ = {tau:.2f}. A large positive trust gap would "
-        "mean answer correctness predicts action reliability; an interval spanning zero means it "
-        "does not."
+        f"The matched SFT-variant audit: the same reliability measures recomputed for "
+        f"{len(reaudit_meta['conditions'])} model conditions spanning Zero-shot and four "
+        f"supervised variants in **{reaudit_meta['short_label']}**, at τ = {tau:.2f}. "
+        "A large positive trust gap would mean answer correctness predicts action reliability; "
+        "an interval spanning zero means it does not."
     )
     if build != reaudit:
         st.caption(
             f"This table always reports {reaudit_meta['short_label']}. The current source "
             f"({build_label}) is summarised in the header above."
         )
-    table = _conditions_at(reaudit, tuple(reaudit_meta["conditions"]), tau)
+    table = _conditions_at(
+        reaudit, tuple(reaudit_meta["conditions"]), tau,
+    )
     st.dataframe(
         table,
         hide_index=True,
@@ -860,8 +952,8 @@ with log_tab:
         "Every routing decision taken in this session, with the gate value and the answer-action "
         "state it was taken under. Decisions live in this session only — export them to keep "
         "them. The JSON export is self-describing: it carries the route vocabulary, the "
-        "per-route totals, and a note on every field, so a downstream workflow can consume it "
-        "without reference to this app."
+        "per-route totals, and a note on every field. These are recorded review decisions, "
+        "not executed commands."
     )
     counts = review_mod.counts(log)
     count_cols = st.columns(len(review_mod.ROUTES) + 1)
@@ -884,7 +976,7 @@ with log_tab:
     else:
         frame = review_mod.to_frame(log)
         st.dataframe(
-            frame[["decided_at", "route_label", "question_id", "dataset", "task", "state",
+            frame[["decided_at", "route_label", "question_id", "dataset", "task", "state_label",
                    "tau", "obj_recall", "answer_correct", "condition", "source", "note"]],
             hide_index=True, width="stretch",
         )
@@ -916,9 +1008,10 @@ with model_tab:
         api_key=serve_mod.Endpoint.from_env().api_key,
     )
     st.warning(
-        "**Not enabled on the hosted demo.** Re-asking needs a served checkpoint reachable from "
-        "wherever this app is running, so it is currently exercised on the local network only. "
-        "Everything else in the dashboard works without it.",
+        "**Runs against a served checkpoint on the local network.** Re-asking needs the model "
+        "under audit reachable from wherever this app is running, so it is exercised locally "
+        "or over an SSH tunnel rather than on the hosted deployment. Every other view in the "
+        "dashboard is fully live here.",
         icon="⚠️",
     )
     st.caption(
@@ -944,8 +1037,11 @@ with model_tab:
         )
         st.caption(
             "Any OpenAI-compatible chat-completions endpoint that accepts image content works. "
-            f"The dashboard also reads {serve_mod.ENV_BASE_URL}, {serve_mod.ENV_MODEL} and "
-            f"{serve_mod.ENV_KEY} from the environment. Point actions are re-scored by the same "
+            f"The dashboard also reads {serve_mod.ENV_BASE_URL}, {serve_mod.ENV_MODEL}, "
+            f"{serve_mod.ENV_KEY} and {serve_mod.ENV_MAX_TOKENS} from the environment "
+            f"(completion budget {serve_mod.max_tokens_from_env()} tokens per call; raise it "
+            "for a model that emits a reasoning trace before answering). "
+            "Point actions are re-scored by the same "
             "rule as the record set: normalised centroid matching at a 0.1 distance threshold"
             + (", with optimal assignment." if scoring_mod.optimal_assignment_available()
                else ", with the greedy fallback because scipy is not installed.")
@@ -973,6 +1069,12 @@ with model_tab:
                 col_a, col_b = st.columns(2)
                 with col_a:
                     st.markdown("**Released record**")
+                    recorded_tile, _ = crop_tile(
+                        current_image_path, rec["gt_centroids"], rec["pred_points"],
+                        palette_name=palette,
+                    )
+                    st.image(recorded_tile, width="stretch")
+                    st.caption("Green crosses: ground-truth objects. Red rings: recorded points.")
                     st.write({
                         "answer_correct": int(rec["answer_correct"]),
                         "obj_recall": round(float(rec["obj_recall"]), 3),
@@ -989,6 +1091,16 @@ with model_tab:
                             else "lucky" if live.obj_recall >= tau else "honest"
                         ]
                     )
+                    # Same crop, same ground-truth objects, live points only — so the
+                    # spatial difference between the two answers is readable, not
+                    # just the scalar difference in the tables below.
+                    live_tile, _ = crop_tile(
+                        current_image_path, rec["gt_centroids"], [],
+                        palette_name=palette, live_points=live.points,
+                    )
+                    st.image(live_tile, width="stretch")
+                    st.caption("Green crosses: the same ground-truth objects. "
+                               "Diamonds: points from this re-ask.")
                     st.write({
                         "answer_letter": live.answer_letter or "—",
                         "answer_correct": live.answer_correct,

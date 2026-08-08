@@ -4,7 +4,7 @@
 Panel b has to support one specific claim: a region can pass the action gate and
 still hand the workflow points that land on nothing. So the record shown must be
 an aligned pass — answer correct, action over the gate — that nevertheless emits
-several stray points, on a crop with more than one labelled object so the coverage
+several stray points, on a crop with more than one ground-truth object so the coverage
 is non-trivial.
 
 Selection criteria, all read from the shipped release:

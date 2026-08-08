@@ -37,6 +37,7 @@ def css(palette_name: str = theme_mod.DEFAULT) -> str:
     --ink:{p.ink}; --muted:{p.muted}; --dim:{p.dim};
     --reliable:{p.reliable}; --silent:{p.silent}; --lucky:{p.lucky}; --honest:{p.honest};
     --phosphor:{p.phosphor}; --heat-floor:{p.heat_floor}; --on-accent:{p.on_accent};
+    --warn:{p.warn};
     --mono:{MONO};
   }}
 
@@ -207,6 +208,43 @@ def css(palette_name: str = theme_mod.DEFAULT) -> str:
   }}
   [data-testid="stExpander"] summary:hover, [data-testid="stExpander"] summary:hover * {{
     color: var(--phosphor) !important;
+  }}
+
+  /* ---------- notices (st.warning / error / info / success) ----------
+     Streamlit fixes its alert colours at process start, so on the Day palette a
+     dark-theme text colour was left sitting on a light tint and the banner became
+     unreadable. Both the fill and the text are therefore owned here. The kind is
+     read off the inner `stAlertContent<Kind>` test id, since the container itself
+     carries no kind attribute. Fills are mixed into `--panel` so they stay opaque
+     over either ground. */
+  [data-testid="stAlertContainer"] {{
+    background: var(--panel2) !important;
+    border: 1px solid var(--hair) !important;
+    border-left: 3px solid var(--muted) !important;
+    border-radius: 8px;
+  }}
+  [data-testid="stAlertContainer"],
+  [data-testid="stAlertContainer"] * {{ color: var(--ink) !important; }}
+  [data-testid="stAlertContainer"] a {{ color: var(--phosphor) !important; }}
+  [data-testid="stAlertContainer"]:has([data-testid="stAlertContentWarning"]) {{
+    background: color-mix(in srgb, var(--warn) 13%, var(--panel)) !important;
+    border-color: color-mix(in srgb, var(--warn) 34%, var(--hair)) !important;
+    border-left-color: var(--warn) !important;
+  }}
+  [data-testid="stAlertContainer"]:has([data-testid="stAlertContentError"]) {{
+    background: color-mix(in srgb, var(--silent) 13%, var(--panel)) !important;
+    border-color: color-mix(in srgb, var(--silent) 34%, var(--hair)) !important;
+    border-left-color: var(--silent) !important;
+  }}
+  [data-testid="stAlertContainer"]:has([data-testid="stAlertContentSuccess"]) {{
+    background: color-mix(in srgb, var(--reliable) 13%, var(--panel)) !important;
+    border-color: color-mix(in srgb, var(--reliable) 34%, var(--hair)) !important;
+    border-left-color: var(--reliable) !important;
+  }}
+  [data-testid="stAlertContainer"]:has([data-testid="stAlertContentInfo"]) {{
+    background: color-mix(in srgb, var(--lucky) 13%, var(--panel)) !important;
+    border-color: color-mix(in srgb, var(--lucky) 34%, var(--hair)) !important;
+    border-left-color: var(--lucky) !important;
   }}
 
   /* palette toggle: two plain buttons so the selected state is ours, not baseweb's */
@@ -437,7 +475,7 @@ def css(palette_name: str = theme_mod.DEFAULT) -> str:
     font-size:10.5px; color:var(--muted); flex-wrap:wrap;
   }}
   /* Legend marks, matching the overlay in sar/render.py: a haloed cross for a
-     labelled object, a hollow ring for a predicted point. */
+     ground-truth object, a hollow ring for a predicted point. */
   .sar-mark {{
     display:inline-block; position:relative; width:18px; height:18px;
     vertical-align:-5px; margin-right:7px; flex:0 0 auto;
@@ -499,7 +537,8 @@ def header_html(
     s = summary
     readout = (
         f"source <b>{escape(build_label)}</b> · model <b>{escape(model)}</b> · "
-        f"condition <b>{escape(condition)}</b> · gate τ<b>={tau:.2f}</b><br>"
+        f"condition <b>{escape(condition)}</b> · records <b>{s.n:,}</b> · "
+        f"gate <b>Rτ(c)=1[obj_recall(c) ≥ {tau:.2f}]</b><br>"
         f"joint silent-failure rate P(A=1, Rτ=0) <b>{_fmt(s.silent_failure_rate)}</b> · "
         f"conditional failure rate P(Rτ=0 | A=1) <b>{_fmt(s.p_unreliable_given_correct)}</b> · "
         f"trust gap Δ <b>{s.trust_gap:+.3f}</b> [{s.gap_lo:+.3f}, {s.gap_hi:+.3f}] · "
@@ -520,10 +559,10 @@ def header_html(
 <div class="sar-header">
   <p class="sar-eyebrow">Autonomous EM oversight · language-to-action hand-off audit</p>
   <h1>Spatial Action Review</h1>
-  <p class="sar-sub">A supervisor reads the language answer; the workflow executes the paired point
-  action. This dashboard keeps both halves of that hand-off on the same electron-microscopy image
-  region — the MCQ prompt, the model answer, the expected option, the predicted point action, and
-  the labelled object evidence — then ends in a routing decision for the action.</p>
+  <p class="sar-sub">A supervisor can inspect the language answer, while a downstream workflow may
+  consume the paired point action. This dashboard audits that point action before downstream use
+  by keeping the MCQ prompt, model answer, expected option, predicted points, and ground-truth object
+  evidence on the same electron-microscopy image region.</p>
   <p class="sar-readout">{readout}</p>
   <div class="sar-stats">{stats}</div>
 </div>
@@ -549,8 +588,8 @@ def upload_prompt_html() -> str:
       <div class="sar-row"><span class="sar-k">crop_id</span><span class="sar-v">image-region identity, and the image filename stem if you upload crops</span></div>
       <div class="sar-row"><span class="sar-k">dataset, task</span><span class="sar-v">the two axes of the risk map</span></div>
       <div class="sar-row"><span class="sar-k">answer_correct</span><span class="sar-v">A(c) &isin; {0, 1}</span></div>
-      <div class="sar-row"><span class="sar-k">obj_recall</span><span class="sar-v">the fraction of labelled objects the points covered; the gate verdict R&tau; is recomputed from it</span></div>
-      <div class="sar-row"><span class="sar-k">n_gt, n_pred</span><span class="sar-v">labelled objects and emitted points</span></div>
+      <div class="sar-row"><span class="sar-k">obj_recall</span><span class="sar-v">the fraction of ground-truth objects the points covered; the gate verdict R&tau; is recomputed from it</span></div>
+      <div class="sar-row"><span class="sar-k">n_gt, n_pred</span><span class="sar-v">ground-truth objects and emitted points</span></div>
     </div>
     <div class="sar-audit-sec">
       <div class="sar-audit-h">Used when present, reported as absent when not</div>
@@ -690,10 +729,10 @@ def audit_html(record, *, gate_reliable: bool, tau: float, image_available: bool
     <div class="sar-row"><span class="sar-k">A(c)</span><span class="sar-v {'ok' if answer_ok else 'warn'}">{'correct' if answer_ok else 'wrong'}</span></div>
   </div>
   <div class="sar-audit-sec">
-    <div class="sar-audit-h">Action channel — what the workflow would execute</div>
+    <div class="sar-audit-h">Action channel — audited before downstream use</div>
     <div class="sar-row"><span class="sar-k">GT centroids</span><span class="sar-v mono">{escape(points(record['gt_centroids']))}</span></div>
     <div class="sar-row"><span class="sar-k">predicted points</span><span class="sar-v mono">{escape(points(record['pred_points']))}</span></div>
-    <div class="sar-row"><span class="sar-k">labelled objects</span><span class="sar-v">{record['n_gt']}</span></div>
+    <div class="sar-row"><span class="sar-k">ground-truth objects</span><span class="sar-v">{record['n_gt']}</span></div>
     <div class="sar-row"><span class="sar-k">points emitted</span><span class="sar-v">{record['n_pred']}</span></div>
     <div class="sar-row"><span class="sar-k">points on target</span><span class="sar-v {'ok' if on_target and not stray else ''}">{on_target} of {record['n_pred']}</span></div>
     <div class="sar-row"><span class="sar-k">points on nothing</span><span class="sar-v {'warn' if stray else 'ok'}">{stray}</span></div>
@@ -729,8 +768,8 @@ def key_legend_html() -> str:
     """
     return (
         '<div class="sar-keylegend">'
-        '<span><i class="sar-mark sar-mark-gt"></i>labelled object (ground truth)</span>'
-        '<span><i class="sar-mark sar-mark-pred"></i>point the model would act on</span>'
+        '<span><i class="sar-mark sar-mark-gt"></i>ground truth</span>'
+        '<span><i class="sar-mark sar-mark-pred"></i>predicted point action</span>'
         "</div>"
     )
 
@@ -741,26 +780,19 @@ def signed_off_html(disposition, *, stale: bool) -> str:
     route = ROUTE_BY_KEY[disposition.route]
     note = f' · note: {escape(disposition.note)}' if disposition.note else ""
     warning = (
-        '<br><span class="stale">Recorded at a different gate value than the one now in force — '
-        "accepting at one gate is not accepting at another.</span>"
+        '<br><span class="stale">Recorded under a different gate value than the one now '
+        "in force.</span>"
         if stale else ""
     )
     return (
         f'<div class="sar-signed"><b>{escape(route.label)}</b> · '
-        f"{escape(QUADRANT_LABEL[disposition.state])} at τ={disposition.tau:.2f} · "
+        f"{escape(QUADRANT_LABEL[disposition.state])} at τ={disposition.tau:.2f} "
         f"{escape(disposition.decided_at)}{note}{warning}</div>"
     )
 
 
 def stray_flag_html(record) -> str:
-    """Warn when a record passes the gate yet part of its action set hits nothing.
-
-    The gate is built from object recall, so it asks only whether enough
-    objects were covered. A record can cover them and still emit points that
-    correspond to no labelled object — and a workflow acting on the whole set
-    would execute every one of them. Nothing in the ledger, the risk map, or the
-    action verdict shows that, which is exactly why it needs saying here.
-    """
+    """Warn when a record passes the gate yet part of its action set hits nothing."""
     stray = int(record.get("points_stray", 0))
     emitted = int(record["n_pred"])
     on_target = int(record.get("points_on_target", 0))
@@ -771,14 +803,14 @@ def stray_flag_html(record) -> str:
         headline = "Stray actions on a region that passes the gate"
         consequence = (
             f"This region passes the gate on coverage alone, but {stray} of the "
-            f"{emitted} points it would hand to the workflow "
-            f"{'land' if stray > 1 else 'lands'} on no labelled object. Acting on the whole "
-            f"set means {stray} operation{'s' if stray > 1 else ''} on empty image."
+            f"{emitted} predicted points {'land' if stray > 1 else 'lands'} on no labelled "
+            f"object. If a later workflow consumed the whole set, {stray} point"
+            f"{'s' if stray > 1 else ''} would target empty image."
         )
     else:
         headline = "Stray actions"
         consequence = (
-            f"{stray} of the {emitted} emitted points land on no labelled object "
+            f"{stray} of the {emitted} emitted points land on no ground-truth object "
             f"({on_target} on target)."
         )
     return f'<div class="sar-flag"><b>{escape(headline)}.</b> {escape(consequence)}</div>'
@@ -795,8 +827,8 @@ def stray_summary_html(summary) -> str:
         f'<div class="sar-flag">Of the <b>{s.n_gate_pass}</b> regions whose point action '
         f"passes the gate, <b>{s.n_stray_despite_pass}</b> ({share:.0f}%) also emit at least "
         "one point "
-        f"that lands on no labelled object. Across every point those cleared regions would "
-        f"hand to the workflow, <b>{s.stray_points_gate_pass} of {s.cleared_points}</b> "
+        f"that lands on no ground-truth object. Across all predicted points in those cleared "
+        f"regions, <b>{s.stray_points_gate_pass} of {s.cleared_points}</b> "
         f"({pt_share:.0f}%) hit nothing. The gate counts coverage only, so it cannot see this."
         "</div>"
     )
@@ -812,8 +844,8 @@ def threshold_chart(frame, *, tau: float, palette_name: str = theme_mod.DEFAULT)
     import altair as alt
 
     p = theme_mod.get(palette_name)
-    long = frame.melt("τ", var_name="series", value_name="share")
     domain = ["aligned-pass rate", "silent-failure rate"]
+    long = frame.melt("τ", value_vars=domain, var_name="series", value_name="share")
     colours = [p.reliable, p.silent]
 
     axis = alt.Axis(labelColor=p.muted, titleColor=p.muted, tickColor=p.hair,

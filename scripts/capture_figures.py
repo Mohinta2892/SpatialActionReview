@@ -122,6 +122,9 @@ def capture(base_url: str, record: str, out_dir: Path, settle_ms: int,
                 url = build_url(base_url, record if wants_record else None, state)
                 page.goto(url, wait_until="networkidle", timeout=120_000)
                 page.wait_for_timeout(settle_ms)
+                if panel.get("tab"):
+                    page.get_by_role("tab", name=panel["tab"]).click()
+                    page.wait_for_timeout(settle_ms)
 
                 errors = [
                     (el.inner_text() or "")[:400]

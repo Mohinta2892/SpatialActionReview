@@ -34,6 +34,7 @@ class Palette:
     grid_line: str   # placeholder tile grid
     heat_floor: str  # risk-map 0% colour
     on_accent: str   # text drawn on top of an accent fill
+    warn: str        # caution accent, used only by notice banners
 
 
 NIGHT = Palette(
@@ -43,7 +44,7 @@ NIGHT = Palette(
     reliable="#35c08a", silent="#e0526a", lucky="#4c7ab0", honest="#6b7885",
     phosphor="#4fd0e0",
     grid_bg="#12181f", grid_line="#283442",
-    heat_floor="#141b23", on_accent="#10151b",
+    heat_floor="#141b23", on_accent="#10151b", warn="#d9a441",
 )
 
 DAY = Palette(
@@ -54,7 +55,7 @@ DAY = Palette(
     reliable="#1f9e6b", silent="#c9364f", lucky="#3d5a80", honest="#6b7885",
     phosphor="#116b8f",
     grid_bg="#e7ecf1", grid_line="#c3ced9",
-    heat_floor="#f3f6f8", on_accent="#ffffff",
+    heat_floor="#f3f6f8", on_accent="#ffffff", warn="#a4661a",
 )
 
 PALETTES = {p.name: p for p in (NIGHT, DAY)}

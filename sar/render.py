@@ -31,7 +31,8 @@ def _rgb(hex_colour: str) -> tuple[int, int, int]:
     return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))  # type: ignore[return-value]
 
 
-def _draw_overlays(canvas: Image.Image, gt: list, pred: list, palette) -> None:
+def _draw_overlays(canvas: Image.Image, gt: list, pred: list, palette,
+                   live: list | None = None) -> None:
     layer = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
     w, h = canvas.size
@@ -47,6 +48,7 @@ def _draw_overlays(canvas: Image.Image, gt: list, pred: list, palette) -> None:
     tick = max(1, round(MARKER_SCALE * 2))
     gt_stroke = _rgb(palette.reliable)
     pred_stroke = _rgb(palette.silent)
+    live_stroke = _rgb(palette.phosphor)
 
     for point in gt:
         x, y = float(point[0]) * w, float(point[1]) * h
@@ -59,6 +61,13 @@ def _draw_overlays(canvas: Image.Image, gt: list, pred: list, palette) -> None:
         draw.ellipse([x - r_ring, y - r_ring, x + r_ring, y + r_ring],
                      outline=pred_stroke, width=pred_width)
         draw.line([x - tick, y, x + tick, y], fill=pred_stroke, width=1)
+
+    # Live re-ask points get their own mark — a diamond in the interactive colour —
+    # so a fresh answer can never be mistaken for the recorded one it sits beside.
+    for point in live or []:
+        x, y = float(point[0]) * w, float(point[1]) * h
+        draw.polygon([(x, y - r_ring), (x + r_ring, y), (x, y + r_ring), (x - r_ring, y)],
+                     outline=live_stroke, width=pred_width)
 
     canvas.alpha_composite(layer)
 
@@ -86,11 +95,15 @@ def crop_tile(
     pred_points: list,
     size: int = TILE,
     palette_name: str = theme_mod.DEFAULT,
+    live_points: list | None = None,
 ) -> tuple[Image.Image, bool]:
     """Return (tile, image_available).
 
     `image_available` is False when the tile is the blank grid, so the caller
     can label the panel honestly instead of letting a placeholder pass as data.
+
+    `live_points` are drawn only when a live re-ask has been made for the record;
+    they are a separate mark and are never mixed into `pred_points`.
     """
     palette = theme_mod.get(palette_name)
     available = image_path is not None and Path(image_path).exists()
@@ -101,5 +114,5 @@ def crop_tile(
     else:
         base = _placeholder(size, palette)
 
-    _draw_overlays(base, gt_centroids or [], pred_points or [], palette)
+    _draw_overlays(base, gt_centroids or [], pred_points or [], palette, live_points or [])
     return base.convert("RGB"), available

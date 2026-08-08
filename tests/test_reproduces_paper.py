@@ -103,11 +103,9 @@ def test_release_declares_both_builds(release):
     assert manifest["default_build"] == "case_study"
     assert manifest["builds"]["case_study"]["conditions"] == ["Staged GRPO"]
     sft = manifest["builds"]["sft_variants"]
-    # The five reported rows come first and in Table 3's order; anything beyond
-    # them must be declared as not part of the reported table.
-    assert sft["conditions"][:len(SFT_TABLE)] == list(SFT_TABLE)
+    assert sft["conditions"] == list(SFT_TABLE)
     assert sft["reported_in_table"] == list(SFT_TABLE)
-    assert set(sft["not_in_reported_table"]) == set(sft["conditions"]) - set(SFT_TABLE)
+    assert sft["not_in_reported_table"] == []
 
 
 def test_release_record_counts(release):
@@ -400,7 +398,7 @@ def test_demo_cases_land_in_their_advertised_state(release):
                 record = by_qid.loc[case["question_id"]]
                 assert record["quadrant"] == quadrant, (build, case["question_id"])
                 assert record["image_file"] != "", "a worked example must show real EM pixels"
-                # An example with no labelled object would render an empty crop.
+                # An example with no ground-truth object would render an empty crop.
                 assert record["n_gt"] > 0, (build, case["question_id"])
                 # The button label must describe the record it actually opens.
                 assert str(record["task"]) == case["task"]

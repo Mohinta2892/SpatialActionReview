@@ -51,7 +51,10 @@ def _resolve(release, url: str):
     )
     offered = manifest["builds"].get(view.build, {}).get("conditions", [])
     condition = view.condition if view.condition in offered else (offered[0] if offered else None)
-    scored = with_gate(build_records(df, view.build, condition), view.tau)
+    scored = with_gate(
+        build_records(df, view.build, condition),
+        view.tau,
+    )
 
     queue = scored[scored["quadrant"] == view.quadrant]
     if view.region is not None:
@@ -75,6 +78,7 @@ def test_every_documented_parameter_is_accepted():
     assert view.build == "sft_variants"
     assert view.condition == "Joint SFT"
     assert view.tau == 0.35
+    assert (view.contract, view.precision_tau, view.count_tolerance) == ("coverage", 0.5, 0)
     assert view.quadrant == "lucky"
     assert view.region == ("location", "EM-H")
     assert view.record == "crop_abc"
@@ -86,6 +90,7 @@ def test_absent_parameters_fall_back_to_the_defaults():
         {}, default_build="case_study", default_condition="Staged GRPO", default_tau=0.5)
     assert view.ok
     assert (view.build, view.condition, view.tau) == ("case_study", "Staged GRPO", 0.5)
+    assert (view.contract, view.precision_tau, view.count_tolerance) == ("coverage", 0.5, 0)
     assert view.quadrant == "silent_failure"
     assert view.palette == "night"
     assert view.region is None and view.record is None
@@ -97,6 +102,11 @@ def test_absent_parameters_fall_back_to_the_defaults():
     ("?tau=abc", "tau"),
     ("?tau=1.4", "tau"),
     ("?tau=-0.1", "tau"),
+    ("?contract=precision", "contract"),
+    ("?precision_tau=abc", "precision_tau"),
+    ("?precision_tau=1.4", "precision_tau"),
+    ("?count_tolerance=abc", "count_tolerance"),
+    ("?count_tolerance=8", "count_tolerance"),
     ("?state=maybe", "state"),
     ("?risk_cell=presence", "risk_cell"),
     ("?risk_cell=a:b:c", "risk_cell"),
@@ -148,6 +158,17 @@ def test_optional_parameters_are_omitted_when_unset():
     assert written == {"source": "case_study", "tau": "0.50",
                        "state": "silent_failure", "theme": "night",
                        "condition": "staged_grpo"}
+
+
+def test_legacy_gate_parameters_do_not_change_the_ledger(release):
+    base = _resolve(
+        release, "/?source=case_study&condition=staged_grpo&tau=0.5")[2]
+    legacy = _resolve(
+        release,
+        "/?source=case_study&condition=staged_grpo&tau=0.5"
+        "&contract=precision&precision_tau=0.75&count_tolerance=1",
+    )[2]
+    assert int(base["action_reliable"].sum()) == int(legacy["action_reliable"].sum())
 
 
 # --------------------------------------------------- URL -> view resolution

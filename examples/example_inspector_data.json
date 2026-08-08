@@ -1,0 +1,479 @@
+{
+  "meta": {
+    "model": "Qwen3-VL",
+    "condition": "Staged GRPO",
+    "tau": 0.5,
+    "summary": [
+      {
+        "model": "Qwen3-VL",
+        "condition": "Staged GRPO",
+        "n": 541,
+        "vqa_acc": 0.503,
+        "obj_recall": 0.39,
+        "silent_failure_rate": 0.274,
+        "trustworthy_rate": 0.229,
+        "P_reliable_given_correct": 0.456,
+        "pim_prec_given_correct": 0.471,
+        "trust_gap": 0.058,
+        "gap_lo": -0.029,
+        "gap_hi": 0.147,
+        "point_biserial": 0.061
+      }
+    ]
+  },
+  "crops": [
+    {
+      "crop_id": "crop_9e92218965a5",
+      "dataset": "lucchi_plus",
+      "task": "presence",
+      "answer_correct": 1,
+      "n_gt": 1,
+      "n_pred": 2,
+      "obj_recall": 1.0,
+      "quadrant": "trustworthy",
+      "image_path": "/mnt/graid/codebases_other/llms_vision/code/em-point-bench_vqa/em-point-bench/data_builds/lucchi_allslices/images/lucchi_plus_s0089_r4_c3.png",
+      "question_id": "crop_9e92218965a5:presence",
+      "vqa_question": "Are any mitochondria visible in this electron microscopy crop?",
+      "expected_answer": "yes",
+      "gt_centroids": [
+        [
+          0.3253,
+          0.427
+        ]
+      ],
+      "image_path_source": "outputs/paired_set.jsonl",
+      "local_image_path": "inspector_assets/images/crop_9e92218965a5.png",
+      "pred_answer_snippet": "A. yes",
+      "pred_points": [
+        [
+          0.273,
+          0.407
+        ],
+        [
+          0.702,
+          0.273
+        ]
+      ],
+      "vqa_choices": [
+        "yes",
+        "no"
+      ],
+      "expected_letter": "A"
+    },
+    {
+      "crop_id": "crop_9fbf086fbbe5",
+      "dataset": "vnc_drosophila",
+      "task": "location",
+      "answer_correct": 0,
+      "n_gt": 1,
+      "n_pred": 2,
+      "obj_recall": 1.0,
+      "quadrant": "lucky",
+      "image_path": "/mnt/graid/codebases_other/llms_vision/code/em-point-bench_vqa/em-point-bench/data_builds/vnc_allslices/images/vnc_drosophila_s0010_r1_c3.png",
+      "question_id": "crop_9fbf086fbbe5:location_edge_1",
+      "vqa_question": "Which edge or central region is the mitochondrion closest to?",
+      "expected_answer": "not near an edge",
+      "gt_centroids": [
+        [
+          0.4317,
+          0.7695
+        ]
+      ],
+      "image_path_source": "outputs/paired_set.jsonl",
+      "local_image_path": "inspector_assets/images/crop_9fbf086fbbe5.png",
+      "pred_answer_snippet": "D. bottom edge",
+      "pred_points": [
+        [
+          0.412,
+          0.756
+        ],
+        [
+          0.378,
+          0.789
+        ]
+      ],
+      "vqa_choices": [
+        "left edge",
+        "right edge",
+        "top edge",
+        "bottom edge",
+        "not near an edge"
+      ],
+      "expected_letter": "E"
+    },
+    {
+      "crop_id": "crop_f10672ccde82",
+      "dataset": "lucchi_plus",
+      "task": "location",
+      "answer_correct": 0,
+      "n_gt": 1,
+      "n_pred": 1,
+      "obj_recall": 1.0,
+      "quadrant": "lucky",
+      "image_path": "/mnt/graid/codebases_other/llms_vision/code/em-point-bench_vqa/em-point-bench/data_builds/lucchi_allslices/images/lucchi_plus_s0037_r0_c4.png",
+      "question_id": "crop_f10672ccde82:location_edge_1",
+      "vqa_question": "Which edge or central region is the mitochondrion closest to?",
+      "expected_answer": "not near an edge",
+      "gt_centroids": [
+        [
+          0.7868,
+          0.4278
+        ]
+      ],
+      "image_path_source": "outputs/paired_set.jsonl",
+      "local_image_path": "inspector_assets/images/crop_f10672ccde82.png",
+      "pred_answer_snippet": "B. right edge",
+      "pred_points": [
+        [
+          0.777,
+          0.407
+        ]
+      ],
+      "vqa_choices": [
+        "left edge",
+        "right edge",
+        "top edge",
+        "bottom edge",
+        "not near an edge"
+      ],
+      "expected_letter": "E"
+    },
+    {
+      "crop_id": "crop_94abe1b0b726",
+      "dataset": "mitoem_human",
+      "task": "location",
+      "answer_correct": 0,
+      "n_gt": 3,
+      "n_pred": 2,
+      "obj_recall": 0.0,
+      "quadrant": "honest",
+      "image_path": "/mnt/graid/codebases_other/llms_vision/code/em-point-bench_vqa/em-point-bench/data_builds/emh_allslices/images/mitoem_human_s0043_r4_c5.png",
+      "question_id": "crop_94abe1b0b726:location_grid_1",
+      "vqa_question": "Where is the leftmost mitochondrion located in the crop?",
+      "expected_answer": "middle left",
+      "gt_centroids": [
+        [
+          0.2349,
+          0.4337
+        ],
+        [
+          0.3066,
+          0.9646
+        ],
+        [
+          0.7599,
+          0.0144
+        ]
+      ],
+      "image_path_source": "outputs/paired_set.jsonl",
+      "local_image_path": "inspector_assets/images/crop_94abe1b0b726.png",
+      "pred_answer_snippet": "A. upper left",
+      "pred_points": [
+        [
+          0.3456,
+          0.5789
+        ],
+        [
+          0.789,
+          0.8765
+        ]
+      ],
+      "vqa_choices": [
+        "upper left",
+        "upper center",
+        "upper right",
+        "middle left",
+        "center",
+        "middle right",
+        "lower left",
+        "lower center",
+        "lower right"
+      ],
+      "expected_letter": "D"
+    },
+    {
+      "crop_id": "crop_8dc5363009aa",
+      "dataset": "mitoem_human",
+      "task": "location",
+      "answer_correct": 0,
+      "n_gt": 2,
+      "n_pred": 2,
+      "obj_recall": 1.0,
+      "quadrant": "lucky",
+      "image_path": "/mnt/graid/codebases_other/llms_vision/code/em-point-bench_vqa/em-point-bench/data_builds/emh_allslices/images/mitoem_human_s0059_r1_c6.png",
+      "question_id": "crop_8dc5363009aa:location_edge_2",
+      "vqa_question": "Which edge or central region is the largest mitochondrion closest to?",
+      "expected_answer": "not near an edge",
+      "gt_centroids": [
+        [
+          0.9343,
+          0.6606
+        ],
+        [
+          0.2655,
+          0.2654
+        ]
+      ],
+      "image_path_source": "outputs/paired_set.jsonl",
+      "local_image_path": "inspector_assets/images/crop_8dc5363009aa.png",
+      "pred_answer_snippet": "A. left edge",
+      "pred_points": [
+        [
+          0.273,
+          0.452
+        ],
+        [
+          0.897,
+          0.673
+        ]
+      ],
+      "vqa_choices": [
+        "left edge",
+        "right edge",
+        "top edge",
+        "bottom edge",
+        "not near an edge"
+      ],
+      "expected_letter": "E"
+    },
+    {
+      "crop_id": "crop_391c7fa76142",
+      "dataset": "mitoem_human",
+      "task": "counting",
+      "answer_correct": 1,
+      "n_gt": 4,
+      "n_pred": 2,
+      "obj_recall": 0.25,
+      "quadrant": "silent_failure",
+      "image_path": "/mnt/graid/codebases_other/llms_vision/code/em-point-bench_vqa/em-point-bench/data_builds/emh_allslices/images/mitoem_human_s0043_r6_c1.png",
+      "question_id": "crop_391c7fa76142:count",
+      "vqa_question": "How many mitochondria are visible in this electron microscopy crop?",
+      "expected_answer": "4",
+      "gt_centroids": [
+        [
+          0.0547,
+          0.8412
+        ],
+        [
+          0.7159,
+          0.2578
+        ],
+        [
+          0.3761,
+          0.403
+        ],
+        [
+          0.1097,
+          0.3829
+        ]
+      ],
+      "image_path_source": "outputs/paired_set.jsonl",
+      "local_image_path": "inspector_assets/images/crop_391c7fa76142.png",
+      "pred_answer_snippet": "E. 4",
+      "pred_points": [
+        [
+          0.487,
+          0.572
+        ],
+        [
+          0.732,
+          0.227
+        ]
+      ],
+      "vqa_choices": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5 or more"
+      ],
+      "expected_letter": "E"
+    },
+    {
+      "crop_id": "crop_958b310063e4",
+      "dataset": "vnc_drosophila",
+      "task": "counting",
+      "answer_correct": 1,
+      "n_gt": 1,
+      "n_pred": 2,
+      "obj_recall": 1.0,
+      "quadrant": "trustworthy",
+      "image_path": "/mnt/graid/codebases_other/llms_vision/code/em-point-bench_vqa/em-point-bench/data_builds/vnc_allslices/images/vnc_drosophila_s0003_r5_c0.png",
+      "question_id": "crop_958b310063e4:count",
+      "vqa_question": "How many mitochondria are visible in this electron microscopy crop?",
+      "expected_answer": "1",
+      "gt_centroids": [
+        [
+          0.4314,
+          0.6579
+        ]
+      ],
+      "image_path_source": "outputs/paired_set.jsonl",
+      "local_image_path": "inspector_assets/images/crop_958b310063e4.png",
+      "pred_answer_snippet": "B. 1",
+      "pred_points": [
+        [
+          0.427,
+          0.643
+        ],
+        [
+          0.475,
+          0.602
+        ]
+      ],
+      "vqa_choices": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5 or more"
+      ],
+      "expected_letter": "B"
+    },
+    {
+      "crop_id": "crop_4d2ac180f81f",
+      "dataset": "mitoem_human",
+      "task": "location",
+      "answer_correct": 1,
+      "n_gt": 3,
+      "n_pred": 2,
+      "obj_recall": 0.0,
+      "quadrant": "silent_failure",
+      "image_path": "/mnt/graid/codebases_other/llms_vision/code/em-point-bench_vqa/em-point-bench/data_builds/emh_allslices/images/mitoem_human_s0031_r1_c1.png",
+      "question_id": "crop_4d2ac180f81f:location_edge_2",
+      "vqa_question": "Which edge or central region is the bottommost mitochondrion closest to?",
+      "expected_answer": "bottom edge",
+      "gt_centroids": [
+        [
+          0.3057,
+          0.9438
+        ],
+        [
+          0.1578,
+          0.9552
+        ],
+        [
+          0.5975,
+          0.4652
+        ]
+      ],
+      "image_path_source": "outputs/paired_set.jsonl",
+      "local_image_path": "inspector_assets/images/crop_4d2ac180f81f.png",
+      "pred_answer_snippet": "D. bottom edge",
+      "pred_points": [
+        [
+          0.227,
+          0.252
+        ],
+        [
+          0.777,
+          0.787
+        ]
+      ],
+      "vqa_choices": [
+        "left edge",
+        "right edge",
+        "top edge",
+        "bottom edge",
+        "not near an edge"
+      ],
+      "expected_letter": "D"
+    },
+    {
+      "crop_id": "crop_02e88b99331e",
+      "dataset": "mitoem_human",
+      "task": "location",
+      "answer_correct": 0,
+      "n_gt": 3,
+      "n_pred": 2,
+      "obj_recall": 0.333,
+      "quadrant": "honest",
+      "image_path": "/mnt/graid/codebases_other/llms_vision/code/em-point-bench_vqa/em-point-bench/data_builds/emh_allslices/images/mitoem_human_s0059_r3_c3.png",
+      "question_id": "crop_02e88b99331e:largest_object_location",
+      "vqa_question": "Where is the largest labeled mitochondrion located in the crop?",
+      "expected_answer": "middle left",
+      "gt_centroids": [
+        [
+          0.1627,
+          0.4478
+        ],
+        [
+          0.5905,
+          0.0663
+        ],
+        [
+          0.4655,
+          0.6721
+        ]
+      ],
+      "image_path_source": "outputs/paired_set.jsonl",
+      "local_image_path": "inspector_assets/images/crop_02e88b99331e.png",
+      "pred_answer_snippet": "I. lower right",
+      "pred_points": [
+        [
+          0.183,
+          0.437
+        ],
+        [
+          0.652,
+          0.807
+        ]
+      ],
+      "vqa_choices": [
+        "upper left",
+        "upper center",
+        "upper right",
+        "middle left",
+        "center",
+        "middle right",
+        "lower left",
+        "lower center",
+        "lower right"
+      ],
+      "expected_letter": "D"
+    },
+    {
+      "crop_id": "crop_d815c11795cb",
+      "dataset": "mitoem_human",
+      "task": "location",
+      "answer_correct": 0,
+      "n_gt": 1,
+      "n_pred": 2,
+      "obj_recall": 0.0,
+      "quadrant": "honest",
+      "image_path": "/mnt/graid/codebases_other/llms_vision/code/em-point-bench_vqa/em-point-bench/data_builds/emh_allslices/images/mitoem_human_s0044_r4_c3.png",
+      "question_id": "crop_d815c11795cb:location_edge_1",
+      "vqa_question": "Which edge or central region is the mitochondrion closest to?",
+      "expected_answer": "bottom edge",
+      "gt_centroids": [
+        [
+          0.3315,
+          0.9721
+        ]
+      ],
+      "image_path_source": "outputs/paired_set.jsonl",
+      "local_image_path": "inspector_assets/images/crop_d815c11795cb.png",
+      "pred_answer_snippet": "B. right edge",
+      "pred_points": [
+        [
+          0.077,
+          0.777
+        ],
+        [
+          0.637,
+          0.405
+        ]
+      ],
+      "vqa_choices": [
+        "left edge",
+        "right edge",
+        "top edge",
+        "bottom edge",
+        "not near an edge"
+      ],
+      "expected_letter": "D"
+    }
+  ]
+}

@@ -1,8 +1,8 @@
-"""Items 1–4 of the numbers report are pinned to this release.
+"""Camera-ready numbers in the report are pinned to this release.
 
-These are the values destined for the manuscript text and for a new row of
-Table 3. Pinning them means a future change to the release, the scoring code or
-the builder cannot move a published number without a test saying so.
+These are the values destined for the manuscript text. Pinning them means a
+future change to the release, the scoring code or the builder cannot move a
+published number without a test saying so.
 
 Values were produced by `python scripts/paper_numbers.py` against
 release/records.csv.gz and cross-checked against the manuscript where it already
@@ -60,8 +60,6 @@ EXPECTED_STRAY = {
         dict(n_pass=297, with_stray=214, stray_points=263, cleared_points=643, over=125),
     "Matched set (753)|Joint SFT":
         dict(n_pass=267, with_stray=197, stray_points=243, cleared_points=581, over=106),
-    "Matched set (753)|Staged GRPO":
-        dict(n_pass=305, with_stray=223, stray_points=273, cleared_points=669, over=127),
 }
 
 
@@ -88,28 +86,8 @@ def test_item3_hit_rate_is_a_proportion(report):
         assert 0.0 <= row["mean_hit_rate"] <= 1.0, key
 
 
-# --- item 4: Staged GRPO on the matched set, as a Table 3 row ----------------
-
-def test_item4_staged_grpo_on_753(report):
-    row = report["4_grpo_753"]
-    assert row["n"] == 753
-    assert round(row["vqa_acc"], 3) == 0.507
-    assert round(row["obj_recall"], 3) == 0.375
-    assert round(row["silent_failure_rate"], 3) == 0.291
-    assert round(row["trust_gap"], 3) == 0.044
-    assert round(row["gap_lo"], 3) == -0.030
-    assert round(row["gap_hi"], 3) == 0.117
-    assert round(row["point_biserial"], 3) == 0.067
-
-
-def test_item4_interval_still_includes_zero(report):
-    """The new row must not contradict the paper's central claim."""
-    row = report["4_grpo_753"]
-    assert row["gap_lo"] < 0 < row["gap_hi"]
-
-
-def test_item4_does_not_disturb_the_541_record_case_study(report):
-    """Adding the 753-record condition must leave the reported case study alone."""
+def test_case_study_values_stay_pinned(report):
+    """The 541-record case study stays distinct from the 753-record SFT audit."""
     from sar.data import build_records, load_release, summarise, with_gate
 
     df, _ = load_release(APP_DIR / "release")
@@ -131,12 +109,11 @@ def test_report_is_reproducible(report):
     again = paper_numbers.build_report(APP_DIR / "release", APP_DIR / "figures")
     for key in ("1_mean_obj_recall", "2_pim_given_correct"):
         assert again[key] == report[key]
-    assert again["4_grpo_753"] == report["4_grpo_753"]
-    assert again["8_sf_vs_ngt"]["p"] == report["8_sf_vs_ngt"]["p"]
+    assert again["7_sf_vs_ngt"]["p"] == report["7_sf_vs_ngt"]["p"]
 
 
 def test_tau_sweep_covers_the_documented_range(report):
-    sweep = report["9_tau_sweep"]
+    sweep = report["8_tau_sweep"]
     assert [r["tau"] for r in sweep] == [round(0.05 * i, 2) for i in range(1, 20)]
     # At the published gate the sweep must agree with the reported ledger.
     at_half = next(r for r in sweep if r["tau"] == 0.5)
@@ -146,6 +123,6 @@ def test_tau_sweep_covers_the_documented_range(report):
 
 
 def test_recall_histogram_sums_to_the_record_set(report):
-    hist = report["10_recall_hist"]
+    hist = report["9_recall_hist"]
     assert len(hist["counts"]) == 20
     assert sum(hist["counts"]) == 541
