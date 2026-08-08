@@ -261,20 +261,27 @@ def css(palette_name: str = theme_mod.DEFAULT) -> str:
   }}
   [class*="st-key-pal_"] button[kind="primary"] p {{ color:var(--on-accent) !important; }}
 
-  /* tabs */
+  /* tabs
+     Colour is set on the tab/button element itself (not just its label's `p`)
+     and every descendant is forced to `inherit`, so this keeps working across
+     Streamlit versions that wrap the label text in a `p`, a `span`, a `div`,
+     or nothing at all. A version pinned to a `p` selector alone renders
+     invisible (default black-on-transparent, or transparent-on-transparent)
+     the moment Streamlit changes that internal markup. */
   .stTabs [data-baseweb="tab-list"] {{
     border-bottom: 1px solid var(--hair); gap: 22px; background: transparent !important;
   }}
   .stTabs [data-baseweb="tab"], .stTabs button[role="tab"] {{
     background: transparent !important; padding-left: 0; padding-right: 0;
-  }}
-  .stTabs [data-baseweb="tab"] p, .stTabs button[role="tab"] p {{
     color: var(--muted) !important; font-size: 14px !important;
   }}
-  .stTabs [data-baseweb="tab"]:hover p, .stTabs button[role="tab"]:hover p {{
+  .stTabs [data-baseweb="tab"] *, .stTabs button[role="tab"] * {{
+    color: inherit !important; font-size: inherit !important;
+  }}
+  .stTabs [data-baseweb="tab"]:hover, .stTabs button[role="tab"]:hover {{
     color: var(--ink) !important;
   }}
-  .stTabs [aria-selected="true"] p {{ color: var(--phosphor) !important; font-weight: 600 !important; }}
+  .stTabs [aria-selected="true"] {{ color: var(--phosphor) !important; font-weight: 600 !important; }}
   /* Streamlit's selected-tab underline keeps its startup accent; ours must win. */
   .stTabs [data-baseweb="tab-highlight"], .stTabs [data-baseweb="tab-border"] {{
     background-color: var(--phosphor) !important;
