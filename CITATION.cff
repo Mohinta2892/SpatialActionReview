@@ -18,8 +18,8 @@ keywords:
   - electron microscopy
   - autonomous laboratories
 authors:
-  - family-names: REPLACE_ME
-    given-names: REPLACE_ME
+  - family-names: Mohinta
+    given-names: Samia
     affiliation: "University of Cambridge"
     email: sm2667@cam.ac.uk
 preferred-citation:
@@ -28,6 +28,6 @@ preferred-citation:
   year: 2026
   collection-title: "VAxAutoSci: Visual Analytics for Autonomous Science, IEEE VIS"
   authors:
-    - family-names: REPLACE_ME
-      given-names: REPLACE_ME
+    - family-names: Mohinta
+      given-names: Samia
       affiliation: "University of Cambridge"
