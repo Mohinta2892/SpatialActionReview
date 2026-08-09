@@ -13,7 +13,7 @@ ends in a recorded routing decision for the proposed action. It does not execute
 segmentation, trigger reacquisition, control a microscope, or use an MCP server.
 
 Companion to *Spatial Action Review: A Visual Analytics Dashboard for Auditing
-Language-to-Action Hand-offs in Electron Microscopy* (VAxAutoSci @ IEEE VIS 2026).
+Language-to-Action Hand-offs in Electron Microscopy* (VAxAutoSci @ IEEE VIS).
 
 ![The dashboard](docs/screenshot-day.png)
 
