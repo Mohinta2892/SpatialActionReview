@@ -922,7 +922,8 @@ with table_tab:
         f"{len(reaudit_meta['conditions'])} model conditions spanning Zero-shot and four "
         f"supervised variants in **{reaudit_meta['short_label']}**, at τ = {tau:.2f}. "
         "A large positive trust gap would mean answer correctness predicts action reliability; "
-        "an interval spanning zero means it does not."
+        "an interval spanning zero means the observed trust gap does not provide a reliable "
+        "clearance signal in this run."
     )
     if build != reaudit:
         st.caption(
@@ -1015,10 +1016,9 @@ with model_tab:
         icon="⚠️",
     )
     st.caption(
-        "Re-ask the model under audit: the same crop and the same two prompts go back to a served "
-        "checkpoint, and the fresh answer and points appear beside the recorded ones. Stays off "
-        "until an endpoint is configured, so the dashboard never answers with a different model "
-        "than the one being audited."
+        "Re-ask this record: the same crop and prompts go to the configured served checkpoint, "
+        "and the fresh answer and points appear beside the stored record. The dashboard does not "
+        "verify that the served checkpoint produced the stored record."
     )
     cfg1, cfg2 = st.columns(2)
     cfg1.text_input("Endpoint base URL", key="endpoint_url",
@@ -1026,7 +1026,7 @@ with model_tab:
     cfg2.text_input("Served model name", key="endpoint_model",
                     placeholder="staged_grpo")
 
-    with st.expander("Serving the checkpoint under audit"):
+    with st.expander("Serving the configured checkpoint"):
         st.code(
             "vllm serve Qwen/Qwen3-VL-8B-Instruct \\\n"
             "  --enable-lora \\\n"

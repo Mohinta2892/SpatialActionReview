@@ -3,7 +3,7 @@ title: "Spatial Action Review: a dashboard for auditing language-to-action hand-
 message: "If you use this software or its released audit records, please cite the paper below."
 type: software
 license: AGPL-3.0-or-later
-repository-code: "https://github.com/REPLACE_ME/spatial-action-review"
+repository-code: "https://github.com/Mohinta2892/SpatialActionReview"
 abstract: >-
   Interactive visual analytics dashboard for auditing the hand-off between a
   vision-language model's language answer and the point-set action an electron
